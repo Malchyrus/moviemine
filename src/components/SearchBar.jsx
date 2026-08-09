@@ -17,6 +17,7 @@ export default function SearchBar({ query, onChange, onSubmit, inputRef }) {
       <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-500 transition-colors group-focus-within:text-cyan-400" />
       <input
         ref={ref}
+        id="search-input"
         type="text"
         value={query}
         onChange={(e) => onChange(e.target.value)}

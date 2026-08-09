@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ArrowDownWideNarrow, ArrowUpAZ, Clock, Star } from 'lucide-react'
+import { ArrowDownWideNarrow, ArrowUpAZ, Clock, Search, Star, X } from 'lucide-react'
 import { useLibrary } from '../lib/library'
 import { useAuth } from '../lib/auth'
 import MovieCard from './MovieCard'
@@ -32,12 +32,16 @@ export default function Library({ onView, onOpenAuth }) {
   const { entries, loading, error, counts } = useLibrary()
   const [filter, setFilter] = useState('all')
   const [sort, setSort] = useState('recent')
+  const [query, setQuery] = useState('')
 
   const filtered = useMemo(() => {
     let list = [...entries]
     if (filter === 'watchlist') list = list.filter((e) => !e.watched)
     if (filter === 'watched') list = list.filter((e) => e.watched)
     if (filter === 'rated') list = list.filter((e) => e.rating != null)
+
+    const q = query.trim().toLowerCase()
+    if (q) list = list.filter((e) => e.movie.title.toLowerCase().includes(q))
 
     switch (sort) {
       case 'title':
@@ -54,19 +58,19 @@ export default function Library({ onView, onOpenAuth }) {
         list.sort((a, b) => b.addedAt - a.addedAt)
     }
     return list
-  }, [entries, filter, sort])
+  }, [entries, filter, sort, query])
 
   const [title, message] = EMPTY[filter]
-  const countFor = (key) =>
-    key === 'all' ? counts.total : counts[key]
+  const countFor = (key) => (key === 'all' ? counts.total : counts[key])
+  const searching = query.trim().length > 0
 
   return (
-    <section id="library" className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 sm:px-6">
+    <main className="mx-auto w-full max-w-7xl px-4 pb-20 pt-28 sm:px-6">
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <h2 className="text-xl font-semibold tracking-tight text-white sm:text-2xl">
+          <h1 className="text-2xl font-bold tracking-tight text-white sm:text-3xl">
             My library
-          </h2>
+          </h1>
           <p className="mt-1 text-sm text-neutral-500">
             {counts.total} {counts.total === 1 ? 'title' : 'titles'} saved ·{' '}
             {counts.watched} watched · {counts.rated} rated
@@ -74,6 +78,27 @@ export default function Library({ onView, onOpenAuth }) {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="relative sm:w-64">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-500" />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search your library…"
+              className="h-10 w-full rounded-full border border-white/10 bg-white/5 pl-10 pr-9 text-sm text-white placeholder-neutral-500 outline-none transition-all duration-300 focus:border-cyan-500/50 focus:bg-white/10 focus:shadow-[0_0_0_3px_rgba(34,211,238,0.15)]"
+            />
+            {query && (
+              <button
+                type="button"
+                aria-label="Clear search"
+                onClick={() => setQuery('')}
+                className="absolute right-2.5 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full bg-white/10 text-neutral-400 transition-colors hover:bg-white/20 hover:text-white"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
           <div className="flex flex-wrap gap-1.5">
             {FILTERS.map((f) => {
               const active = filter === f.key
@@ -161,12 +186,12 @@ export default function Library({ onView, onOpenAuth }) {
           >
             <EmptyState
               title="Library unavailable"
-              message="Couldn't reach the backend. Check the Render service is running and VITE_API_URL is set."
+              message="Couldn't reach the backend. Check the Railway service is running and VITE_API_URL is set."
             />
           </motion.div>
         ) : filtered.length > 0 ? (
           <motion.div
-            key={`${filter}-${sort}`}
+            key={`${filter}-${sort}-${query}`}
             layout
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
@@ -180,15 +205,22 @@ export default function Library({ onView, onOpenAuth }) {
           </motion.div>
         ) : (
           <motion.div
-            key={`${filter}-empty`}
+            key={`${filter}-empty-${query}`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
-            <EmptyState title={title} message={message} />
+            <EmptyState
+              title={searching ? `No matches for “${query.trim()}”` : title}
+              message={
+                searching
+                  ? 'Try a different title in your library.'
+                  : message
+              }
+            />
           </motion.div>
         )}
       </AnimatePresence>
-    </section>
+    </main>
   )
 }

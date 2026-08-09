@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
+import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Clapperboard, LogOut, Search, User } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import Button from './ui/Button'
 
-export default function Navbar({ onSearchFocus, onOpenAuth, libraryCount }) {
+export default function Navbar({ onOpenAuth, libraryCount }) {
   const { user, logout } = useAuth()
+  const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
@@ -14,6 +16,15 @@ export default function Navbar({ onSearchFocus, onOpenAuth, libraryCount }) {
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
+
+  function goSearch() {
+    navigate('/')
+    setTimeout(() => {
+      const el = document.getElementById('search-input')
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      el?.focus()
+    }, 150)
+  }
 
   return (
     <motion.header
@@ -27,38 +38,41 @@ export default function Navbar({ onSearchFocus, onOpenAuth, libraryCount }) {
       }`}
     >
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <a href="#" className="group flex items-center gap-2.5">
+        <Link to="/" className="group flex items-center gap-2.5">
           <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-sky-500 shadow-[0_4px_20px_rgba(34,211,238,0.4)] transition-transform group-hover:rotate-6">
             <Clapperboard className="h-5 w-5 text-white" />
           </span>
           <span className="text-lg font-semibold tracking-tight text-white">
             Movie<span className="text-cyan-400">Mine</span>
           </span>
-        </a>
+        </Link>
 
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="sm" onClick={onSearchFocus}>
+          <Button variant="ghost" size="sm" onClick={goSearch}>
             <Search className="h-4 w-4" />
             <span className="hidden sm:inline">Search</span>
           </Button>
-          <a href="#library" className="relative">
-            <Button variant="outline" size="sm">
-              My library
-              <AnimatePresence>
-                {libraryCount > 0 && (
-                  <motion.span
-                    key={libraryCount}
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-sky-500 px-1.5 text-[11px] font-semibold text-white"
-                  >
-                    {libraryCount}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </Button>
-          </a>
+
+          <NavLink to="/library">
+            {({ isActive }) => (
+              <Button variant={isActive ? 'primary' : 'outline'} size="sm">
+                My library
+                <AnimatePresence>
+                  {libraryCount > 0 && (
+                    <motion.span
+                      key={libraryCount}
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0 }}
+                      className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-sky-500 px-1.5 text-[11px] font-semibold text-white"
+                    >
+                      {libraryCount}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </Button>
+            )}
+          </NavLink>
 
           {user ? (
             <div className="flex items-center gap-2">

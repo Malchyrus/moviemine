@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
-import { Clapperboard, Loader2, LogIn, UserPlus, X } from 'lucide-react'
+import { Clapperboard, Loader2, LogIn, RefreshCw, UserPlus, X } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import Button from './ui/Button'
 
@@ -13,6 +13,22 @@ export default function AuthModal({ onClose }) {
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [captcha, setCaptcha] = useState(makeCaptcha)
+  const [captchaInput, setCaptchaInput] = useState('')
+  const [captchaError, setCaptchaError] = useState('')
+
+  function makeCaptcha() {
+    return {
+      a: 1 + Math.floor(Math.random() * 9),
+      b: 1 + Math.floor(Math.random() * 9),
+    }
+  }
+
+  function newCaptcha() {
+    setCaptcha(makeCaptcha())
+    setCaptchaInput('')
+    setCaptchaError('')
+  }
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose()
@@ -26,12 +42,22 @@ export default function AuthModal({ onClose }) {
 
   useEffect(() => {
     setError('')
+    setCaptchaError('')
+    if (mode === 'register') newCaptcha()
   }, [mode])
 
   async function onSubmit(e) {
     e.preventDefault()
-    setSubmitting(true)
     setError('')
+    if (mode === 'register') {
+      const answer = Number.parseInt(captchaInput, 10)
+      if (Number.isNaN(answer) || answer !== captcha.a + captcha.b) {
+        setCaptchaError('Incorrect answer. Try the new question below.')
+        newCaptcha()
+        return
+      }
+    }
+    setSubmitting(true)
     try {
       if (mode === 'login') {
         await login({ email, password })
@@ -154,6 +180,42 @@ export default function AuthModal({ onClose }) {
             autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
             className={inputClass}
           />
+
+          {mode === 'register' && (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="flex h-11 flex-1 items-center rounded-xl border border-white/10 bg-white/5 px-4 text-sm text-neutral-300">
+                  <span>
+                    What is{' '}
+                    <span className="font-semibold text-white">{captcha.a}</span> +{' '}
+                    <span className="font-semibold text-white">{captcha.b}</span>?
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={newCaptcha}
+                  aria-label="New question"
+                  title="New question"
+                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-neutral-400 transition-colors hover:bg-white/10 hover:text-white"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                </button>
+              </div>
+              <input
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
+                value={captchaInput}
+                onChange={(e) => setCaptchaInput(e.target.value)}
+                placeholder="Type your answer"
+                required
+                className={inputClass}
+              />
+              {captchaError && (
+                <p className="px-1 text-xs font-medium text-red-300">{captchaError}</p>
+              )}
+            </div>
+          )}
 
           {error && (
             <p className="rounded-xl border border-red-500/30 bg-red-950/60 px-4 py-2.5 text-xs font-medium text-red-300">

@@ -52,7 +52,7 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+        className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm sm:p-8"
         onClick={onClose}
       >
         <motion.div
@@ -61,9 +61,9 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
           exit={{ opacity: 0, scale: 0.94, y: 20 }}
           transition={{ type: 'spring', damping: 26, stiffness: 300 }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-full max-w-3xl overflow-hidden rounded-3xl border border-white/10 bg-neutral-900 shadow-2xl"
+          className="relative my-auto flex max-h-[calc(100vh-2rem)] w-full max-w-3xl flex-col overflow-hidden rounded-[28px] border border-white/15 bg-neutral-900 shadow-[0_24px_80px_-12px_rgba(0,0,0,0.9)] ring-1 ring-black/40 sm:max-h-[calc(100vh-3rem)]"
         >
-          <div className="relative aspect-video w-full bg-neutral-800">
+          <div className="relative h-44 w-full shrink-0 bg-neutral-800 sm:h-60">
             {details?.backdrop_path ? (
               <img
                 src={IMG.backdrop(details.backdrop_path, 'w1280')}
@@ -94,7 +94,7 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
             )}
           </div>
 
-          <div className="max-h-[60vh] overflow-y-auto p-6 sm:p-8">
+          <div className="min-h-0 flex-1 overflow-y-auto p-6 sm:p-8">
             <div className="flex flex-wrap items-center gap-2">
               {details?.genres?.map((g) => (
                 <span

@@ -1,4 +1,4 @@
-name: Keep Render API alive
+name: Keep backend API alive
 
 on:
   schedule:
@@ -11,10 +11,10 @@ jobs:
     steps:
       - name: Ping backend health endpoint
         env:
-          RENDER_URL: ${{ vars.RENDER_URL }}
+          BACKEND_URL: ${{ vars.BACKEND_URL }}
         run: |
-          if [ -z "$RENDER_URL" ]; then
-            echo "Set the RENDER_URL repository variable to the Render API URL (e.g. https://cinetrack-api.onrender.com)."
+          if [ -z "$BACKEND_URL" ]; then
+            echo "Set the BACKEND_URL repository variable to the Railway API URL (e.g. https://moviemine-be-production.up.railway.app)."
             exit 0
           fi
-          curl -fsS -o /dev/null -w "health: %{http_code}\n" "$RENDER_URL/api/health" || true
+          curl -fsS -o /dev/null -w "health: %{http_code}\n" "$BACKEND_URL/api/health" || true

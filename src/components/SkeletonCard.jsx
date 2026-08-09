@@ -13,7 +13,7 @@ export default function SkeletonCard() {
   )
 }
 
-export function EmptyState({ title = 'Nothing here yet', message }) {
+export function EmptyState({ title = 'Nothing here yet', message, children }) {
   return (
     <motion.div
       initial={{ opacity: 0, y: 16 }}
@@ -25,6 +25,7 @@ export function EmptyState({ title = 'Nothing here yet', message }) {
       </span>
       <h3 className="text-lg font-semibold text-white">{title}</h3>
       {message && <p className="max-w-sm text-sm text-neutral-500">{message}</p>}
+      {children}
     </motion.div>
   )
 }

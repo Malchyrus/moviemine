@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Clapperboard, Search } from 'lucide-react'
+import { Clapperboard, LogOut, Search, User } from 'lucide-react'
+import { useAuth } from '../lib/auth'
 import Button from './ui/Button'
 
-export default function Navbar({ onSearchFocus, libraryCount }) {
+export default function Navbar({ onSearchFocus, onOpenAuth, libraryCount }) {
+  const { user, logout } = useAuth()
   const [scrolled, setScrolled] = useState(false)
 
   useEffect(() => {
@@ -26,11 +28,11 @@ export default function Navbar({ onSearchFocus, libraryCount }) {
     >
       <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
         <a href="#" className="group flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-fuchsia-500 shadow-[0_4px_20px_rgba(167,139,250,0.4)] transition-transform group-hover:rotate-6">
+          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-cyan-500 to-sky-500 shadow-[0_4px_20px_rgba(34,211,238,0.4)] transition-transform group-hover:rotate-6">
             <Clapperboard className="h-5 w-5 text-white" />
           </span>
           <span className="text-lg font-semibold tracking-tight text-white">
-            Cine<span className="text-violet-400">Track</span>
+            Movie<span className="text-cyan-400">Mine</span>
           </span>
         </a>
 
@@ -49,7 +51,7 @@ export default function Navbar({ onSearchFocus, libraryCount }) {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     exit={{ scale: 0 }}
-                    className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 px-1.5 text-[11px] font-semibold text-white"
+                    className="ml-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-gradient-to-r from-cyan-500 to-sky-500 px-1.5 text-[11px] font-semibold text-white"
                   >
                     {libraryCount}
                   </motion.span>
@@ -57,6 +59,30 @@ export default function Navbar({ onSearchFocus, libraryCount }) {
               </AnimatePresence>
             </Button>
           </a>
+
+          {user ? (
+            <div className="flex items-center gap-2">
+              <Button variant="ghost" size="sm">
+                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-sky-500">
+                  <User className="h-3 w-3 text-white" />
+                </span>
+                <span className="hidden max-w-24 truncate sm:inline">{user.name}</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => logout()}
+                title="Log out"
+                aria-label="Log out"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          ) : (
+            <Button variant="accent" size="sm" onClick={onOpenAuth}>
+              Log in
+            </Button>
+          )}
         </div>
       </nav>
     </motion.header>

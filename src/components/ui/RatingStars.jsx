@@ -9,7 +9,7 @@ export default function RatingStars({ value, onChange, size = 'sm', readOnly }) 
 
   const fillClass = (n) =>
     n <= active
-      ? 'bg-gradient-to-r from-violet-500 to-fuchsia-500'
+      ? 'bg-gradient-to-r from-cyan-500 to-sky-500'
       : 'bg-white/10'
 
   if (readOnly) {
@@ -19,12 +19,12 @@ export default function RatingStars({ value, onChange, size = 'sm', readOnly }) 
           {bars.map((n) => (
             <span
               key={n}
-              className={`w-1 rounded-sm ${n <= active ? 'bg-violet-500' : 'bg-white/10'}`}
+              className={`w-1 rounded-sm ${n <= active ? 'bg-cyan-500' : 'bg-white/10'}`}
               style={{ height: `${4 + n * 1.4}px` }}
             />
           ))}
         </div>
-        <span className="text-xs font-semibold text-violet-400">{value}/10</span>
+        <span className="text-xs font-semibold text-cyan-400">{value}/10</span>
       </div>
     )
   }

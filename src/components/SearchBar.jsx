@@ -14,14 +14,14 @@ export default function SearchBar({ query, onChange, onSubmit, inputRef }) {
       onSubmit={onSubmit}
       className="group relative mx-auto w-full max-w-xl"
     >
-      <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-500 transition-colors group-focus-within:text-violet-400" />
+      <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-neutral-500 transition-colors group-focus-within:text-cyan-400" />
       <input
         ref={ref}
         type="text"
         value={query}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Search movies…"
-        className="h-12 w-full rounded-full border border-white/10 bg-white/5 pl-12 pr-12 text-sm text-white placeholder-neutral-500 backdrop-blur transition-all duration-300 outline-none focus:border-violet-500/50 focus:bg-white/10 focus:shadow-[0_0_0_3px_rgba(139,92,246,0.15)]"
+        className="h-12 w-full rounded-full border border-white/10 bg-white/5 pl-12 pr-12 text-sm text-white placeholder-neutral-500 backdrop-blur transition-all duration-300 outline-none focus:border-cyan-500/50 focus:bg-white/10 focus:shadow-[0_0_0_3px_rgba(34,211,238,0.15)]"
       />
       {query && (
         <button

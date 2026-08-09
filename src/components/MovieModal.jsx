@@ -3,18 +3,30 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Bookmark, Check, Eye, EyeOff, Star, X, Clock, Calendar, Play } from 'lucide-react'
 import { fetchMovieDetails, IMG } from '../lib/api'
 import { useLibrary } from '../lib/library'
+import { useAuth } from '../lib/auth'
 import { useGenres } from '../lib/genres'
 import { formatDate, formatRuntime } from '../lib/format'
 import Button from './ui/Button'
 import RatingStars from './ui/RatingStars'
 
-export default function MovieModal({ movie, onClose }) {
+export default function MovieModal({ movie, onClose, onRequireAuth }) {
   const [details, setDetails] = useState(null)
   const { has, toggle, entry, setWatched, setRating } = useLibrary()
+  const { user } = useAuth()
   const genres = useGenres()
   const inList = has(movie.id)
   const watched = entry(movie.id)?.watched || false
   const myRating = entry(movie.id)?.rating || null
+
+  function guarded(action) {
+    return (...args) => {
+      if (!user) {
+        onRequireAuth?.()
+        return
+      }
+      action(...args)
+    }
+  }
 
   useEffect(() => {
     fetchMovieDetails(movie.id)
@@ -128,13 +140,13 @@ export default function MovieModal({ movie, onClose }) {
                   </p>
                   <RatingStars
                     value={myRating}
-                    onChange={(r) => setRating(movie.id, r)}
+                    onChange={guarded((r) => setRating(movie.id, r))}
                   />
                 </div>
 
                 <Button
                   variant={watched ? 'danger' : 'outline'}
-                  onClick={() => setWatched(movie.id, !watched)}
+                  onClick={guarded(() => setWatched(movie.id, !watched))}
                 >
                   {watched ? (
                     <>
@@ -163,7 +175,7 @@ export default function MovieModal({ movie, onClose }) {
                 )}
                 <Button
                   variant={inList ? 'danger' : 'outline'}
-                  onClick={() => toggle(details || movie)}
+                  onClick={guarded(() => toggle(details || movie))}
                 >
                   {inList ? (
                     <>

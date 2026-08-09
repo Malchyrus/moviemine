@@ -26,8 +26,8 @@ export default function Hero({ featured, onView }) {
         </motion.div>
       )}
 
-      <div className="pointer-events-none absolute -left-40 top-20 h-96 w-96 rounded-full bg-violet-600/25 blur-[120px]" />
-      <div className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full bg-fuchsia-600/20 blur-[120px]" />
+      <div className="pointer-events-none absolute -left-40 top-20 h-96 w-96 rounded-full bg-cyan-600/25 blur-[120px]" />
+      <div className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full bg-sky-600/20 blur-[120px]" />
 
       <div className="relative mx-auto w-full max-w-7xl px-4 pb-16 pt-28 sm:px-6">
         <motion.div
@@ -36,7 +36,7 @@ export default function Hero({ featured, onView }) {
           transition={{ duration: 0.7, delay: 0.2 }}
         >
           <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 text-xs font-medium text-neutral-300 backdrop-blur">
-            <TrendingUp className="h-3.5 w-3.5 text-violet-400" />
+            <TrendingUp className="h-3.5 w-3.5 text-cyan-400" />
             Trending this week
           </span>
         </motion.div>

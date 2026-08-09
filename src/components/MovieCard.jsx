@@ -48,8 +48,8 @@ export default function MovieCard({ movie, index = 0, onView }) {
             </motion.span>
           )}
           {myRating != null && (
-            <span className="flex items-center gap-1 rounded-full border border-white/10 bg-neutral-950/70 px-2.5 py-1 text-[11px] font-bold text-violet-300 backdrop-blur">
-              <Star className="h-3 w-3 fill-violet-400 text-violet-400" />
+            <span className="flex items-center gap-1 rounded-full border border-white/10 bg-neutral-950/70 px-2.5 py-1 text-[11px] font-bold text-cyan-300 backdrop-blur">
+              <Star className="h-3 w-3 fill-cyan-400 text-cyan-400" />
               {myRating}/10
             </span>
           )}
@@ -71,7 +71,7 @@ export default function MovieCard({ movie, index = 0, onView }) {
             className="flex items-center justify-center"
           >
             {inList ? (
-              <Check className="h-4 w-4 text-violet-400" />
+              <Check className="h-4 w-4 text-cyan-400" />
             ) : (
               <Bookmark className="h-4 w-4 text-white" />
             )}

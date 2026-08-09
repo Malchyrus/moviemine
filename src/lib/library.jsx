@@ -1,4 +1,6 @@
 import { createContext, useContext, useCallback, useEffect, useMemo, useState } from 'react'
+import { getAuthToken } from './token'
+import { useAuth } from './auth'
 
 const API = import.meta.env.VITE_API_URL || ''
 
@@ -16,26 +18,38 @@ function snapshot(movie) {
 }
 
 async function request(path, options = {}) {
-  const res = await fetch(`${API}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-  })
+  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
+  const token = getAuthToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const res = await fetch(`${API}${path}`, { ...options, headers })
   if (!res.ok) throw new Error(`API request failed: ${res.status}`)
   return res.json()
 }
 
 export function LibraryProvider({ children }) {
+  const { user, initializing } = useAuth()
   const [entries, setEntries] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
+  const authed = !initializing && !!user
+
   useEffect(() => {
+    if (!authed) {
+      setEntries([])
+      setLoading(false)
+      return
+    }
+
     let cancelled = false
+    setLoading(true)
+    setError('')
     request('/api/movies')
       .then((data) => {
         if (!cancelled) setEntries(data.movies || [])
       })
-      .catch((e) => {
+      .catch(() => {
         if (!cancelled) setError('Could not reach the backend API.')
       })
       .finally(() => {
@@ -44,7 +58,7 @@ export function LibraryProvider({ children }) {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [authed])
 
   const toggle = useCallback((movie) => {
     setEntries((prev) => {
@@ -101,8 +115,8 @@ export function LibraryProvider({ children }) {
   )
 
   const value = useMemo(
-    () => ({ entries, loading, toggle, has, entry, setWatched, setRating, counts }),
-    [entries, loading, toggle, has, entry, setWatched, setRating, counts],
+    () => ({ entries, loading, error, toggle, has, entry, setWatched, setRating, counts }),
+    [entries, loading, error, toggle, has, entry, setWatched, setRating, counts],
   )
 
   return <LibraryContext.Provider value={value}>{children}</LibraryContext.Provider>

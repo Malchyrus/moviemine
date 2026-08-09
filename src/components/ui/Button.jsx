@@ -10,7 +10,7 @@ const variants = {
   danger:
     'bg-red-500/90 text-white hover:bg-red-500 shadow-[0_8px_30px_rgba(239,68,68,0.3)]',
   accent:
-    'bg-gradient-to-r from-violet-500 to-fuchsia-500 text-white hover:from-violet-400 hover:to-fuchsia-400 shadow-[0_8px_30px_rgba(167,139,250,0.35)]',
+    'bg-gradient-to-r from-cyan-500 to-sky-500 text-white hover:from-cyan-400 hover:to-sky-400 shadow-[0_8px_30px_rgba(34,211,238,0.35)]',
 }
 
 const sizes = {

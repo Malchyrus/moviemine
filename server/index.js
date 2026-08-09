@@ -19,7 +19,7 @@ const port = process.env.PORT || 5000
 initDb()
   .then(() => {
     app.listen(port, () => {
-      console.log(`CineTrack API listening on :${port}`)
+      console.log(`MovieMine API listening on :${port}`)
     })
   })
   .catch((err) => {

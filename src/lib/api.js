@@ -1,3 +1,5 @@
+import { getAuthToken } from './token'
+
 const API = import.meta.env.VITE_API_URL || ''
 const IMAGE_BASE = 'https://image.tmdb.org/t/p'
 
@@ -12,10 +14,21 @@ export function imageFallback(movie) {
   return movie.poster_path || movie.backdrop_path || null
 }
 
-async function request(path) {
-  const res = await fetch(`${API}${path}`)
-  if (!res.ok) throw new Error(`TMDB request failed: ${res.status}`)
-  return res.json()
+async function request(path, options = {}) {
+  const headers = { ...(options.headers || {}) }
+  const token = getAuthToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const res = await fetch(`${API}${path}`, { ...options, headers })
+  const data = await res.json().catch(() => null)
+
+  if (!res.ok) {
+    const error = new Error(data?.error || data?.message || `Request failed: ${res.status}`)
+    error.status = res.status
+    throw error
+  }
+
+  return data
 }
 
 export function fetchTrending() {
@@ -44,4 +57,28 @@ export function fetchMovieDetails(id) {
 
 export function fetchGenres() {
   return request('/api/tmdb/genres')
+}
+
+export function registerUser(fields) {
+  return request('/api/auth/register', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(fields),
+  })
+}
+
+export function loginUser(credentials) {
+  return request('/api/auth/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(credentials),
+  })
+}
+
+export function fetchMe() {
+  return request('/api/auth/me')
+}
+
+export function logoutUser() {
+  return request('/api/auth/logout', { method: 'POST' })
 }

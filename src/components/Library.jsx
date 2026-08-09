@@ -2,8 +2,10 @@ import { useMemo, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ArrowDownWideNarrow, ArrowUpAZ, Clock, Star } from 'lucide-react'
 import { useLibrary } from '../lib/library'
+import { useAuth } from '../lib/auth'
 import MovieCard from './MovieCard'
 import SkeletonCard, { EmptyState } from './SkeletonCard'
+import Button from './ui/Button'
 
 const FILTERS = [
   { key: 'all', label: 'All' },
@@ -25,7 +27,8 @@ const EMPTY = {
   rated: ['No ratings yet', 'Rate a movie 1–10 to see it here.'],
 }
 
-export default function Library({ onView }) {
+export default function Library({ onView, onOpenAuth }) {
+  const { user } = useAuth()
   const { entries, loading, error, counts } = useLibrary()
   const [filter, setFilter] = useState('all')
   const [sort, setSort] = useState('recent')
@@ -94,7 +97,7 @@ export default function Library({ onView }) {
                   )}
                   <span className="relative">
                     {f.label}
-                    <span className={`ml-1.5 ${active ? 'text-violet-300' : 'text-neutral-600'}`}>
+                    <span className={`ml-1.5 ${active ? 'text-cyan-300' : 'text-neutral-600'}`}>
                       {countFor(f.key)}
                     </span>
                   </span>
@@ -121,7 +124,23 @@ export default function Library({ onView }) {
       </div>
 
       <AnimatePresence mode="wait">
-        {loading ? (
+        {!user ? (
+          <motion.div
+            key="signin"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <EmptyState
+              title="Your library is waiting"
+              message="Log in to save movies, track what you've watched, and rate titles."
+            >
+              <Button variant="accent" onClick={onOpenAuth}>
+                Log in
+              </Button>
+            </EmptyState>
+          </motion.div>
+        ) : loading ? (
           <motion.div
             key="loading"
             initial={{ opacity: 0 }}

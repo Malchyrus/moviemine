@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence } from 'framer-motion'
+import { AuthProvider } from './lib/auth'
 import { LibraryProvider, useLibrary } from './lib/library'
 import { GenreProvider } from './lib/genres'
 import { fetchTrending, fetchPopular, fetchUpcoming, fetchTopRated, searchMovies } from './lib/api'
@@ -9,6 +10,7 @@ import MovieRow from './components/MovieRow'
 import MovieGrid from './components/MovieGrid'
 import SearchBar from './components/SearchBar'
 import MovieModal from './components/MovieModal'
+import AuthModal from './components/AuthModal'
 import Library from './components/Library'
 import Footer from './components/Footer'
 import { EmptyState } from './components/SkeletonCard'
@@ -24,8 +26,11 @@ function AppContent() {
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
   const [selected, setSelected] = useState(null)
+  const [authOpen, setAuthOpen] = useState(false)
   const { counts } = useLibrary()
   const searchRef = useRef(null)
+
+  const openAuth = useCallback(() => setAuthOpen(true), [])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -81,6 +86,7 @@ function AppContent() {
     <div className="min-h-screen bg-neutral-950">
       <Navbar
         onSearchFocus={() => searchRef.current?.scrollIntoView({ behavior: 'smooth' })}
+        onOpenAuth={openAuth}
         libraryCount={counts.total}
       />
 
@@ -109,7 +115,7 @@ function AppContent() {
             />
           </div>
 
-          <Library onView={setSelected} />
+          <Library onView={setSelected} onOpenAuth={openAuth} />
         </>
       ) : (
         <main className="mx-auto max-w-7xl px-4 pt-28 sm:px-6">
@@ -147,7 +153,16 @@ function AppContent() {
       )}
 
       <AnimatePresence>
-        {selected && <MovieModal movie={selected} onClose={() => setSelected(null)} />}
+        {authOpen && <AuthModal onClose={() => setAuthOpen(false)} />}
+      </AnimatePresence>
+      <AnimatePresence>
+        {selected && (
+          <MovieModal
+            movie={selected}
+            onClose={() => setSelected(null)}
+            onRequireAuth={openAuth}
+          />
+        )}
       </AnimatePresence>
     </div>
   )
@@ -155,10 +170,12 @@ function AppContent() {
 
 export default function App() {
   return (
-    <GenreProvider>
-      <LibraryProvider>
-        <AppContent />
-      </LibraryProvider>
-    </GenreProvider>
+    <AuthProvider>
+      <GenreProvider>
+        <LibraryProvider>
+          <AppContent />
+        </LibraryProvider>
+      </GenreProvider>
+    </AuthProvider>
   )
 }

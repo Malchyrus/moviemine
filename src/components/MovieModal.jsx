@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bookmark, Check, Eye, EyeOff, Star, X, Clock, Calendar, Play } from 'lucide-react'
-import { fetchMovieDetails, IMG } from '../lib/api'
+import { Bookmark, Calendar, Check, Clock, ExternalLink, Eye, EyeOff, MonitorPlay, Play, Star, X } from 'lucide-react'
+import { fetchMovieDetails, fetchWatchProviders, fetchRegions, IMG } from '../lib/api'
 import { useLibrary } from '../lib/library'
 import { useAuth } from '../lib/auth'
 import { useGenres } from '../lib/genres'
@@ -9,8 +9,19 @@ import { formatDate, formatRuntime } from '../lib/format'
 import Button from './ui/Button'
 import RatingStars from './ui/RatingStars'
 
+const GROUPS = [
+  { key: 'flatrate', label: 'Streaming' },
+  { key: 'rent', label: 'Rent' },
+  { key: 'buy', label: 'Buy' },
+]
+
 export default function MovieModal({ movie, onClose, onRequireAuth }) {
   const [details, setDetails] = useState(null)
+  const [providers, setProviders] = useState(null)
+  const [regions, setRegions] = useState([])
+  const [region, setRegion] = useState('')
+  const [providersLoading, setProvidersLoading] = useState(true)
+  const [providersError, setProvidersError] = useState(false)
   const { has, toggle, entry, setWatched, setRating } = useLibrary()
   const { user } = useAuth()
   const genres = useGenres()
@@ -34,6 +45,48 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
       .catch(() => setDetails({}))
   }, [movie.id])
 
+  function resolveRegion(list) {
+    const codes = new Set((list || []).map((r) => r.iso_3166_1))
+    const parts = (navigator.language || 'en-US').split('-')
+    const guess = (parts[1] || parts[0]).toUpperCase()
+    setRegion(codes.has(guess) ? guess : 'US')
+  }
+
+  useEffect(() => {
+    let active = true
+    fetchRegions()
+      .then((data) => {
+        if (!active) return
+        const list = Array.isArray(data.results) ? data.results : []
+        setRegions(list)
+        resolveRegion(list)
+      })
+      .catch(() => {
+        if (active) resolveRegion([])
+      })
+    return () => {
+      active = false
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!region) return
+    let active = true
+    setProvidersLoading(true)
+    setProvidersError(false)
+    fetchWatchProviders(movie.id, region)
+      .then(setProviders)
+      .catch(() => {
+        if (active) setProvidersError(true)
+      })
+      .finally(() => {
+        if (active) setProvidersLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [movie.id, region])
+
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose()
     window.addEventListener('keydown', onKey)
@@ -45,6 +98,11 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
   }, [onClose])
 
   const trailer = details?.videos?.results?.find((v) => v.type === 'Trailer' && v.site === 'YouTube')
+
+  const regionData = providers?.results?.[region] || null
+  const watchLink = regionData?.link || null
+  const regionName =
+    regions.find((r) => r.iso_3166_1 === region)?.english_name || region || 'your region'
 
   return (
     <AnimatePresence>
@@ -188,6 +246,86 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
                   )}
                 </Button>
               </div>
+            </div>
+
+            <div className="mt-8 border-t border-white/10 pt-6">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-neutral-500">
+                  <MonitorPlay className="h-4 w-4 text-cyan-400" />
+                  Where to watch
+                </h3>
+                {regions.length > 0 && (
+                  <select
+                    value={region}
+                    onChange={(e) => setRegion(e.target.value)}
+                    aria-label="Region"
+                    className="rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-neutral-300 outline-none transition-colors focus:border-cyan-500/50 [&>option]:bg-neutral-900"
+                  >
+                    {regions.map((r) => (
+                      <option key={r.iso_3166_1} value={r.iso_3166_1}>
+                        {r.english_name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+
+              {providersLoading ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="h-11 w-36 animate-pulse rounded-2xl bg-white/5" />
+                  ))}
+                </div>
+              ) : providersError ? (
+                <p className="text-sm text-neutral-500">
+                  Couldn't load providers for this movie.
+                </p>
+              ) : regionData ? (
+                GROUPS.map((group) => {
+                  const items = regionData[group.key] || []
+                  if (items.length === 0) return null
+                  return (
+                    <div key={group.key} className="mb-4 last:mb-0">
+                      <p className="mb-2 text-xs font-medium uppercase tracking-wider text-neutral-400">
+                        {group.label}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {items.map((p) => (
+                          <a
+                            key={p.provider_id}
+                            href={watchLink || '#'}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={`${p.provider_name} · ${group.label} · ${regionName}`}
+                            className="group flex items-center gap-2.5 rounded-2xl border border-white/10 bg-white/5 px-3 py-2 transition-colors hover:border-cyan-500/40 hover:bg-white/10"
+                          >
+                            {p.logo_path ? (
+                              <img
+                                src={IMG.provider(p.logo_path)}
+                                alt={p.provider_name}
+                                loading="lazy"
+                                className="h-8 w-8 rounded-lg bg-white object-contain p-0.5"
+                              />
+                            ) : (
+                              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-neutral-700 text-[10px] font-semibold text-neutral-300">
+                                {p.provider_name.charAt(0)}
+                              </span>
+                            )}
+                            <span className="text-xs font-medium text-neutral-200">
+                              {p.provider_name}
+                            </span>
+                            <ExternalLink className="h-3.5 w-3.5 text-neutral-500 opacity-0 transition-opacity group-hover:opacity-100" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <p className="text-sm text-neutral-400">
+                  Not available to stream, rent, or buy in {regionName}.
+                </p>
+              )}
             </div>
 
             {details?.credits?.cast?.length > 0 && (

@@ -8,6 +8,7 @@ export const IMG = {
   backdrop: (path, size = 'w1280') =>
     path ? `${IMAGE_BASE}/${size}${path}` : null,
   profile: (path, size = 'w185') => (path ? `${IMAGE_BASE}/${size}${path}` : null),
+  provider: (path, size = 'w92') => (path ? `${IMAGE_BASE}/${size}${path}` : null),
 }
 
 export function imageFallback(movie) {
@@ -53,6 +54,14 @@ export function searchMovies(query, page = 1) {
 
 export function fetchMovieDetails(id) {
   return request(`/api/tmdb/movie/${id}`)
+}
+
+export function fetchWatchProviders(id, region) {
+  return request(`/api/tmdb/movie/${id}/watch-providers?region=${encodeURIComponent(region)}`)
+}
+
+export function fetchRegions() {
+  return request('/api/tmdb/watch-providers/regions')
 }
 
 export function fetchGenres() {

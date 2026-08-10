@@ -18,7 +18,7 @@ function snapshot(movie) {
 }
 
 async function request(path, options = {}) {
-  const headers = { 'Content-Type': 'application/json', ...(options.headers || {}) }
+  const headers = { Accept: 'application/json', 'Content-Type': 'application/json', ...(options.headers || {}) }
   const token = getAuthToken()
   if (token) headers.Authorization = `Bearer ${token}`
 

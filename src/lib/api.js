@@ -16,7 +16,7 @@ export function imageFallback(movie) {
 }
 
 async function request(path, options = {}) {
-  const headers = { ...(options.headers || {}) }
+  const headers = { Accept: 'application/json', ...(options.headers || {}) }
   const token = getAuthToken()
   if (token) headers.Authorization = `Bearer ${token}`
 

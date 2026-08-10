@@ -91,10 +91,6 @@ export default function Hero({ featured, onView }) {
           </Button>
         </motion.div>
       </div>
-
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 animate-bounce text-neutral-500">
-        <div className="h-8 w-5 rounded-full border border-neutral-600" />
-      </div>
     </section>
   )
 }

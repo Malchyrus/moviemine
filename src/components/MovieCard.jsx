@@ -84,7 +84,7 @@ export default function MovieCard({ movie, index = 0, onView }) {
           <h3 className="truncate text-sm font-semibold text-white">{movie.title}</h3>
           <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-yellow-400">
             <Star className="h-3.5 w-3.5 fill-yellow-400" />
-            {movie.vote_average?.toFixed(1)}
+            {Number(movie.vote_average) > 0 ? movie.vote_average.toFixed(1) : 'Unrated'}
           </span>
         </div>
         <p className="text-xs text-neutral-500">

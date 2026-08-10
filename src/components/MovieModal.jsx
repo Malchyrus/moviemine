@@ -177,7 +177,9 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
                 <div className="mt-4 flex flex-wrap items-center gap-4 text-sm text-neutral-300">
                   <span className="flex items-center gap-1.5 font-semibold text-yellow-400">
                     <Star className="h-4 w-4 fill-yellow-400" />
-                    {details?.vote_average?.toFixed(1) ?? movie.vote_average?.toFixed(1)}
+                    {Number(details?.vote_average ?? movie.vote_average) > 0
+                      ? (details?.vote_average ?? movie.vote_average).toFixed(1)
+                      : 'Unrated'}
                   </span>
                   <span className="flex items-center gap-1.5">
                     <Calendar className="h-4 w-4" />

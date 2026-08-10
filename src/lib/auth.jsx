@@ -22,17 +22,29 @@ export function AuthProvider({ children }) {
 
     let active = true
     setAuthToken(token)
+    const cached = localStorage.getItem(USER_KEY)
+    if (cached) {
+      try {
+        setUser(JSON.parse(cached))
+      } catch {
+        // ignore malformed cache
+      }
+    }
+
     fetchMe()
       .then(({ user: restored }) => {
         if (!active) return
         setUser(restored)
         localStorage.setItem(USER_KEY, JSON.stringify(restored))
       })
-      .catch(() => {
+      .catch((err) => {
         if (!active) return
-        setAuthToken(null)
-        localStorage.removeItem(TOKEN_KEY)
-        localStorage.removeItem(USER_KEY)
+        if (err?.status === 401) {
+          setAuthToken(null)
+          setUser(null)
+          localStorage.removeItem(TOKEN_KEY)
+          localStorage.removeItem(USER_KEY)
+        }
       })
       .finally(() => {
         if (active) setInitializing(false)

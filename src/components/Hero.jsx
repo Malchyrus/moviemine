@@ -58,7 +58,7 @@ export default function Hero({ featured, onView }) {
         >
           <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-sm font-semibold text-white backdrop-blur">
             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-            {featured.vote_average?.toFixed(1)}
+            {Number(featured.vote_average) > 0 ? featured.vote_average.toFixed(1) : 'Unrated'}
           </span>
           {featured.release_date && (
             <span className="text-sm text-neutral-400">

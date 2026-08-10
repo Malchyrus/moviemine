@@ -1,0 +1,15 @@
+name: Keep backend API alive
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    env:
+      BACKEND_URL: ${{ vars.BACKEND_URL != '' && vars.BACKEND_URL || 'https://moviemine-production.up.railway.app' }}
+    steps:
+      - name: Ping backend health endpoint
+        run: curl -fsS -o /dev/null "$BACKEND_URL/api/health"

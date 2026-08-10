@@ -17,10 +17,11 @@ export default function Home({ onView }) {
   const [results, setResults] = useState([])
   const [searching, setSearching] = useState(false)
   const searchRef = useRef(null)
+  const retryTimer = useRef(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (attempt = 1) => {
     setError('')
+    if (attempt === 1) setLoading(true)
     try {
       const [t, p, u, tr] = await Promise.all([
         fetchTrending('week'),
@@ -32,17 +33,22 @@ export default function Home({ onView }) {
       setPopular(p.results || [])
       setUpcoming(u.results || [])
       setTopRated(tr.results || [])
+      setLoading(false)
     } catch (e) {
+      if (attempt < 4) {
+        retryTimer.current = setTimeout(() => load(attempt + 1), 3000)
+        return
+      }
+      setLoading(false)
       setError(
         'Failed to load movies. Check the backend is running and TMDB_API_KEY is set on the server.',
       )
-    } finally {
-      setLoading(false)
     }
   }, [])
 
   useEffect(() => {
     load()
+    return () => clearTimeout(retryTimer.current)
   }, [load])
 
   useEffect(() => {
@@ -125,8 +131,15 @@ export default function Home({ onView }) {
       </main>
 
       {error && (
-        <div className="fixed bottom-6 left-1/2 z-[90] -translate-x-1/2 rounded-2xl border border-red-500/30 bg-red-950/90 px-5 py-3 text-sm text-red-200 backdrop-blur">
-          {error}
+        <div className="fixed bottom-6 left-1/2 z-[90] flex -translate-x-1/2 items-center gap-3 rounded-2xl border border-red-500/30 bg-red-950/90 px-5 py-3 text-sm text-red-200 backdrop-blur">
+          <span>{error}</span>
+          <button
+            type="button"
+            onClick={() => load()}
+            className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white transition-colors hover:bg-white/20"
+          >
+            Retry
+          </button>
         </div>
       )}
     </>

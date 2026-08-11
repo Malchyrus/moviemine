@@ -2,6 +2,7 @@ import { motion } from 'framer-motion'
 import { Bookmark, Check, Eye, Star } from 'lucide-react'
 import { useLibrary } from '../lib/library'
 import { imageFallback } from '../lib/api'
+import AddToList from './AddToList'
 
 export default function MovieCard({ movie, index = 0, onView }) {
   const { has, toggle, entry } = useLibrary()
@@ -77,6 +78,10 @@ export default function MovieCard({ movie, index = 0, onView }) {
             )}
           </motion.span>
         </button>
+
+        <div className="absolute right-2.5 top-14">
+          <AddToList movie={movie} align="left" />
+        </div>
       </div>
 
       <div className="space-y-1.5 p-4">

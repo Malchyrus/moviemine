@@ -8,6 +8,7 @@ import { useGenres } from '../lib/genres'
 import { formatDate, formatRuntime } from '../lib/format'
 import Button from './ui/Button'
 import RatingStars from './ui/RatingStars'
+import AddToList from './AddToList'
 
 const GROUPS = [
   { key: 'flatrate', label: 'Streaming' },
@@ -250,6 +251,8 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
                         </>
                       )}
                     </Button>
+
+                    <AddToList movie={details || movie} align="left" />
                   </div>
                 </div>
 

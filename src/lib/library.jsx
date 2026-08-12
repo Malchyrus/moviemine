@@ -1,8 +1,9 @@
 import { createContext, useContext, useCallback, useEffect, useMemo, useState } from 'react'
 import { getAuthToken } from './token'
 import { useAuth } from './auth'
+import { API_BASE } from './config'
 
-const API = import.meta.env.VITE_API_URL || ''
+const API = API_BASE
 
 const LibraryContext = createContext(null)
 

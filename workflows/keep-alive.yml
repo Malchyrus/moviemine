@@ -14,7 +14,7 @@ jobs:
           BACKEND_URL: ${{ vars.BACKEND_URL }}
         run: |
           if [ -z "$BACKEND_URL" ]; then
-            echo "Set the BACKEND_URL repository variable to the Railway API URL (e.g. https://moviemine-be-production.up.railway.app)."
+            echo "Set the BACKEND_URL repository variable to the Railway API URL (e.g. https://moviemine-production.up.railway.app)."
             exit 0
           fi
           curl -fsS -o /dev/null -w "health: %{http_code}\n" "$BACKEND_URL/api/health" || true

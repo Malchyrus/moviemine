@@ -1,6 +1,7 @@
 import { getAuthToken } from './token'
+import { API_BASE } from './config'
 
-const API = import.meta.env.VITE_API_URL || ''
+const API = API_BASE
 const IMAGE_BASE = 'https://image.tmdb.org/t/p'
 
 export const IMG = {

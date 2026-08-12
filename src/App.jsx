@@ -14,17 +14,30 @@ import Library from './components/Library'
 function AppShell() {
   const [selected, setSelected] = useState(null)
   const [authOpen, setAuthOpen] = useState(false)
-  const { counts } = useLibrary()
+  const { counts, preferences } = useLibrary()
   const location = useLocation()
 
   const openAuth = useCallback(() => setAuthOpen(true), [])
+  const background = preferences.background
 
   useEffect(() => {
     window.scrollTo(0, 0)
   }, [location.pathname])
 
   return (
-    <div className="min-h-screen bg-neutral-950">
+    <div
+      className="min-h-screen bg-neutral-950"
+      style={
+        background
+          ? {
+              backgroundImage: `linear-gradient(rgba(10, 10, 10, 0.55), rgba(10, 10, 10, 0.55)), url(${background})`,
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
+              backgroundAttachment: 'fixed',
+            }
+          : undefined
+      }
+    >
       <Navbar onOpenAuth={openAuth} libraryCount={counts.total} />
 
       <Routes>

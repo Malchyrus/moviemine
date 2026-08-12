@@ -184,8 +184,13 @@ export function LibraryProvider({ children }) {
     return request('/api/lists', {
       method: 'POST',
       body: JSON.stringify({ name }),
-    }).then(() => refreshLists())
-  }, [refreshLists])
+    })
+      .then((list) => {
+        mergeList(list)
+        refreshLists()
+        return list
+      })
+  }, [refreshLists, mergeList])
 
   const renameList = useCallback((id, name) => {
     return request(`/api/lists/${id}`, {

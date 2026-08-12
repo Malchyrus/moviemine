@@ -107,6 +107,28 @@ function BackgroundPanel() {
   )
 }
 
+const FIELD_DEFAULTS = { watched: 'true', rating: '7', status: '', genres: '' }
+
+const FIELD_OPS = {
+  watched: ['=', '!='],
+  rating: ['=', '!=', '>', '>=', '<', '<='],
+  status: ['=', '!='],
+  genres: ['contains'],
+}
+
+const ALL_OPS = ['=', '!=', '>', '>=', '<', '<=']
+
+const STATUS_OPTIONS = [
+  { value: 'planning', label: 'Planning' },
+  { value: 'watching', label: 'Watching' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'dropped', label: 'Dropped' },
+  { value: 'on_hold', label: 'On hold' },
+]
+
+const VALUE_SELECT_CLASS =
+  'min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-neutral-200 outline-none focus:border-cyan-500/50 [&>option]:bg-neutral-900'
+
 function AutomationsPanel({ onRequireAuth }) {
   const {
     automations,
@@ -118,6 +140,7 @@ function AutomationsPanel({ onRequireAuth }) {
     lists,
   } = useLibrary()
   const { user } = useAuth()
+  const genres = useGenres()
   const [adding, setAdding] = useState(false)
   const [draft, setDraft] = useState({
     name: '',
@@ -129,7 +152,11 @@ function AutomationsPanel({ onRequireAuth }) {
     listId: '',
   })
 
-  const defaultAdd = preferences.default_add_list_id || ''
+  const defaultAddId = preferences.default_add_list_id || ''
+  const defaultAddValid =
+    !defaultAddId || lists.some((l) => String(l.id) === String(defaultAddId))
+  const defaultAdd = defaultAddValid ? defaultAddId : ''
+  const oldestList = lists.length ? [...lists].sort((a, b) => a.id - b.id)[0] : null
 
   function guarded(fn) {
     return (...args) => {
@@ -182,6 +209,33 @@ function AutomationsPanel({ onRequireAuth }) {
         <Sparkles className="h-4 w-4 text-cyan-400" />
         Automations
       </h3>
+
+      {defaultAddId && !defaultAddValid && (
+        <div className="mt-4 rounded-xl border border-amber-500/40 bg-amber-500/10 p-3">
+          <p className="text-xs font-medium text-amber-200">
+            Your default add list no longer exists. Choose a new default:
+          </p>
+          <select
+            value={oldestList ? String(oldestList.id) : ''}
+            onChange={(e) =>
+              guarded(() => updatePreferences({ default_add_list_id: e.target.value || null }))()
+            }
+            className="mt-2 w-full rounded-lg border border-amber-500/40 bg-white/5 px-2.5 py-2 text-xs text-neutral-200 outline-none transition-colors focus:border-cyan-500/50 [&>option]:bg-neutral-900"
+          >
+            {oldestList ? (
+              <>
+                <option value={oldestList.id}>{oldestList.name}</option>
+                <option value="">Plan to Watch (default)</option>
+              </>
+            ) : (
+              <option value="">No lists yet — create one in the Lists panel</option>
+            )}
+          </select>
+          <p className="mt-1.5 text-[10px] text-neutral-500">
+            Or create a new list in the Lists panel to use as your default.
+          </p>
+        </div>
+      )}
 
       <label className="mt-4 block">
         <span className="text-xs text-neutral-300">Default add list</span>
@@ -265,7 +319,14 @@ function AutomationsPanel({ onRequireAuth }) {
           <div className="flex items-center gap-2">
             <select
               value={draft.field}
-              onChange={(e) => setDraft({ ...draft, field: e.target.value })}
+              onChange={(e) => {
+                const field = e.target.value
+                setDraft((d) => {
+                  const ops = FIELD_OPS[field] || ALL_OPS
+                  const op = ops.includes(d.op) ? d.op : ops[0]
+                  return { ...d, field, op, value: FIELD_DEFAULTS[field] ?? '' }
+                })
+              }}
               className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-neutral-200 outline-none focus:border-cyan-500/50 [&>option]:bg-neutral-900"
             >
               <option value="none">Any</option>
@@ -281,7 +342,7 @@ function AutomationsPanel({ onRequireAuth }) {
                   onChange={(e) => setDraft({ ...draft, op: e.target.value })}
                   className="w-20 shrink-0 rounded-lg border border-white/10 bg-white/5 px-1 py-2 text-xs text-neutral-200 outline-none focus:border-cyan-500/50 [&>option]:bg-neutral-900"
                 >
-                  {['=', '!=', '>', '>=', '<', '<=', 'contains'].map((op) => (
+                  {(FIELD_OPS[draft.field] || ALL_OPS).map((op) => (
                     <option key={op} value={op}>
                       {op}
                     </option>
@@ -291,13 +352,43 @@ function AutomationsPanel({ onRequireAuth }) {
                   <select
                     value={draft.value}
                     onChange={(e) => setDraft({ ...draft, value: e.target.value })}
-                    className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-neutral-200 outline-none focus:border-cyan-500/50 [&>option]:bg-neutral-900"
+                    className={VALUE_SELECT_CLASS}
                   >
                     <option value="true">true</option>
                     <option value="false">false</option>
                   </select>
+                ) : draft.field === 'status' ? (
+                  <select
+                    value={draft.value}
+                    onChange={(e) => setDraft({ ...draft, value: e.target.value })}
+                    className={VALUE_SELECT_CLASS}
+                  >
+                    <option value="">Status…</option>
+                    {STATUS_OPTIONS.map((s) => (
+                      <option key={s.value} value={s.value}>
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : draft.field === 'genres' ? (
+                  <select
+                    value={draft.value}
+                    onChange={(e) => setDraft({ ...draft, value: e.target.value })}
+                    className={VALUE_SELECT_CLASS}
+                  >
+                    <option value="">Genre…</option>
+                    {Object.values(genres).map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </select>
                 ) : (
                   <input
+                    type="number"
+                    min="0"
+                    max="10"
+                    step="0.5"
                     value={draft.value}
                     onChange={(e) => setDraft({ ...draft, value: e.target.value })}
                     placeholder="value"
@@ -350,11 +441,15 @@ function AutomationsPanel({ onRequireAuth }) {
 }
 
 function ListsPanel({ view, onSelect }) {
-  const { lists, createList, renameList, deleteList, counts } = useLibrary()
+  const { lists, createList, renameList, deleteList, counts, preferences, updatePreferences } =
+    useLibrary()
   const [adding, setAdding] = useState(false)
   const [newName, setNewName] = useState('')
   const [editing, setEditing] = useState(null)
   const [draft, setDraft] = useState('')
+  const [confirming, setConfirming] = useState(null)
+  const [newDefault, setNewDefault] = useState('')
+  const [newDefaultName, setNewDefaultName] = useState('')
 
   function submitNew(e) {
     e.preventDefault()
@@ -374,9 +469,41 @@ function ListsPanel({ view, onSelect }) {
   }
 
   function confirmDelete(list) {
-    if (window.confirm(`Delete “${list.name}”? Movies stay in your library.`)) {
-      deleteList(list.id)
-      if (view === list.id) onSelect('all')
+    const isDefault = String(preferences.default_add_list_id) === String(list.id)
+
+    if (!isDefault) {
+      if (window.confirm(`Delete “${list.name}”? Movies stay in your library.`)) {
+        deleteList(list.id)
+        if (view === list.id) onSelect('all')
+      }
+      return
+    }
+
+    const candidates = lists.filter((l) => l.id !== list.id)
+    const oldest = candidates.length ? [...candidates].sort((a, b) => a.id - b.id)[0] : null
+    setNewDefault(oldest ? String(oldest.id) : '')
+    setConfirming(list)
+  }
+
+  async function confirmDeleteNow() {
+    const list = confirming
+    setConfirming(null)
+
+    if (String(preferences.default_add_list_id) === String(list.id)) {
+      await updatePreferences({ default_add_list_id: newDefault || null })
+    }
+
+    deleteList(list.id)
+    if (view === list.id) onSelect('all')
+  }
+
+  async function createNewDefault() {
+    const name = newDefaultName.trim()
+    if (!name) return
+    const list = await createList(name)
+    if (list && list.id) {
+      setNewDefault(String(list.id))
+      setNewDefaultName('')
     }
   }
 
@@ -473,6 +600,56 @@ function ListsPanel({ view, onSelect }) {
           <ListPlus className="h-4 w-4" />
           New list
         </button>
+      )}
+
+      {confirming && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-neutral-900 p-4">
+            <p className="text-sm font-semibold text-white">Delete “{confirming.name}”?</p>
+            <p className="mt-1.5 text-xs text-amber-300">
+              This is your default add list. Pick a new default list:
+            </p>
+            <select
+              value={newDefault}
+              onChange={(e) => setNewDefault(e.target.value)}
+              className="mt-2 w-full rounded-lg border border-amber-500/40 bg-white/5 px-2.5 py-2 text-xs text-neutral-200 outline-none focus:border-cyan-500/50 [&>option]:bg-neutral-900"
+            >
+              {lists
+                .filter((l) => l.id !== confirming.id)
+                .map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name}
+                  </option>
+                ))}
+              <option value="">Plan to Watch (default)</option>
+            </select>
+            <div className="mt-2 flex items-center gap-2">
+              <input
+                value={newDefaultName}
+                onChange={(e) => setNewDefaultName(e.target.value)}
+                placeholder="…or create a new list"
+                className="h-8 min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-2.5 text-xs text-white placeholder-neutral-500 outline-none focus:border-cyan-500/50"
+              />
+              <button
+                type="button"
+                disabled={!newDefaultName.trim()}
+                onClick={createNewDefault}
+                className="flex h-8 shrink-0 items-center gap-1 rounded-lg bg-cyan-500 px-2.5 text-xs font-medium text-white transition-colors hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Plus className="h-3.5 w-3.5" /> Create
+              </button>
+            </div>
+            <p className="mt-1.5 text-[10px] text-neutral-500">Movies stay in your library.</p>
+            <div className="mt-3 flex gap-2">
+              <Button variant="accent" className="flex-1" onClick={confirmDeleteNow}>
+                Delete
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setConfirming(null)}>
+                Cancel
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </section>
   )

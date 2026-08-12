@@ -129,7 +129,6 @@ function AutomationsPanel({ onRequireAuth }) {
     listId: '',
   })
 
-  const autoMove = preferences.auto_move_watched !== false
   const defaultAdd = preferences.default_add_list_id || ''
 
   function guarded(fn) {
@@ -184,26 +183,7 @@ function AutomationsPanel({ onRequireAuth }) {
         Automations
       </h3>
 
-      <label className="mt-4 flex cursor-pointer items-center justify-between gap-3">
-        <span className="text-xs text-neutral-300">Auto-move watched</span>
-        <button
-          type="button"
-          role="switch"
-          aria-checked={autoMove}
-          onClick={guarded(() => updatePreferences({ auto_move_watched: !autoMove }))}
-          className={`relative h-5 w-9 rounded-full transition-colors ${
-            autoMove ? 'bg-cyan-500' : 'bg-white/15'
-          }`}
-        >
-          <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-all ${
-              autoMove ? 'left-[18px]' : 'left-0.5'
-            }`}
-          />
-        </button>
-      </label>
-
-      <label className="mt-3 block">
+      <label className="mt-4 block">
         <span className="text-xs text-neutral-300">Default add list</span>
         <select
           value={defaultAdd}
@@ -289,6 +269,7 @@ function AutomationsPanel({ onRequireAuth }) {
               className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-neutral-200 outline-none focus:border-cyan-500/50 [&>option]:bg-neutral-900"
             >
               <option value="none">Any</option>
+              <option value="watched">Watched</option>
               <option value="rating">Rating</option>
               <option value="status">Status</option>
               <option value="genres">Genres</option>
@@ -306,12 +287,23 @@ function AutomationsPanel({ onRequireAuth }) {
                     </option>
                   ))}
                 </select>
-                <input
-                  value={draft.value}
-                  onChange={(e) => setDraft({ ...draft, value: e.target.value })}
-                  placeholder="value"
-                  className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-white placeholder-neutral-500 outline-none focus:border-cyan-500/50"
-                />
+                {draft.field === 'watched' ? (
+                  <select
+                    value={draft.value}
+                    onChange={(e) => setDraft({ ...draft, value: e.target.value })}
+                    className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-neutral-200 outline-none focus:border-cyan-500/50 [&>option]:bg-neutral-900"
+                  >
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </select>
+                ) : (
+                  <input
+                    value={draft.value}
+                    onChange={(e) => setDraft({ ...draft, value: e.target.value })}
+                    placeholder="value"
+                    className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-2 py-2 text-xs text-white placeholder-neutral-500 outline-none focus:border-cyan-500/50"
+                  />
+                )}
               </>
             )}
           </div>

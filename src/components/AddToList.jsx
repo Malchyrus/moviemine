@@ -17,6 +17,7 @@ export default function AddToList({ movie, align = 'right', className = '' }) {
   const [pos, setPos] = useState({ top: 0, left: 0 })
   const anchorRef = useRef(null)
   const menuRef = useRef(null)
+  const busyRef = useRef(null)
 
   useEffect(() => {
     if (!open) return
@@ -56,15 +57,17 @@ export default function AddToList({ movie, align = 'right', className = '' }) {
     (lists.find((l) => l.id === listId)?.movies || []).some((m) => m.id === movie.id)
 
   async function handleToggle(listId) {
-    if (busy) return
+    if (busyRef.current) return
+    busyRef.current = listId
     setBusy(listId)
+    setOpen(false)
     try {
       if (membership(listId)) await removeFromList(movie.id, listId)
       else await addToList(movie, listId)
-      setOpen(false)
     } catch {
       // ignored
     } finally {
+      busyRef.current = null
       setBusy(null)
     }
   }
@@ -72,7 +75,8 @@ export default function AddToList({ movie, align = 'right', className = '' }) {
   async function handleCreate(e) {
     e.preventDefault()
     const trimmed = name.trim()
-    if (!trimmed || busy) return
+    if (!trimmed || busyRef.current) return
+    busyRef.current = 'create'
     setBusy('create')
     try {
       await createList(trimmed)
@@ -81,6 +85,7 @@ export default function AddToList({ movie, align = 'right', className = '' }) {
     } catch {
       // ignored
     } finally {
+      busyRef.current = null
       setBusy(null)
     }
   }
@@ -93,7 +98,7 @@ export default function AddToList({ movie, align = 'right', className = '' }) {
         title="Add to list"
         onClick={(e) => {
           e.stopPropagation()
-          if (busy) return
+          if (busyRef.current) return
           setOpen((v) => !v)
         }}
         className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-neutral-950/60 backdrop-blur transition-colors hover:bg-neutral-950"

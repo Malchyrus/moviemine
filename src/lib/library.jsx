@@ -137,23 +137,38 @@ export function LibraryProvider({ children }) {
     [refreshLists],
   )
 
-  const addToList = useCallback((movie, listId) => {
-    return request(`/api/lists/${listId}/movies`, {
-      method: 'POST',
-      body: JSON.stringify(snapshot(movie)),
-    }).then((data) => {
-      if (data && Array.isArray(data.lists)) setLists(data.lists)
-      else refreshLists()
+  const mergeList = useCallback((list) => {
+    setLists((prev) => {
+      const exists = prev.some((l) => l.id === list.id)
+      return exists
+        ? prev.map((l) => (l.id === list.id ? list : l))
+        : [...prev, list]
     })
-  }, [refreshLists])
+  }, [])
 
-  const removeFromList = useCallback((tmdbId, listId) => {
-    return request(`/api/lists/${listId}/movies/${tmdbId}`, { method: 'DELETE' })
-      .then((data) => {
-        if (data && Array.isArray(data.lists)) setLists(data.lists)
+  const addToList = useCallback(
+    (movie, listId) => {
+      return request(`/api/lists/${listId}/movies`, {
+        method: 'POST',
+        body: JSON.stringify(snapshot(movie)),
+      }).then((data) => {
+        if (data && data.id && Array.isArray(data.movies)) mergeList(data)
         else refreshLists()
       })
-  }, [refreshLists])
+    },
+    [refreshLists, mergeList],
+  )
+
+  const removeFromList = useCallback(
+    (tmdbId, listId) => {
+      return request(`/api/lists/${listId}/movies/${tmdbId}`, { method: 'DELETE' })
+        .then((data) => {
+          if (data && data.id && Array.isArray(data.movies)) mergeList(data)
+          else refreshLists()
+        })
+    },
+    [refreshLists, mergeList],
+  )
 
   const moveToList = useCallback((tmdbId, targetListId) => {
     return request(`/api/lists/${targetListId}/move`, {

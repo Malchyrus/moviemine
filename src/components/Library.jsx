@@ -428,30 +428,29 @@ function ListsPanel({ view, onSelect }) {
               </form>
             )
           }
-          const controls =
-            list.is_default ? null : (
-              <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
-                <button
-                  type="button"
-                  aria-label="Rename list"
-                  onClick={() => {
-                    setEditing(list.id)
-                    setDraft(list.name)
-                  }}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-neutral-500 hover:bg-white/10 hover:text-white"
-                >
-                  <Pencil className="h-3 w-3" />
-                </button>
-                <button
-                  type="button"
-                  aria-label="Delete list"
-                  onClick={() => confirmDelete(list)}
-                  className="flex h-6 w-6 items-center justify-center rounded-md text-neutral-500 hover:bg-white/10 hover:text-white"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
-              </span>
-            )
+          const controls = (
+            <span className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+              <button
+                type="button"
+                aria-label="Rename list"
+                onClick={() => {
+                  setEditing(list.id)
+                  setDraft(list.name)
+                }}
+                className="flex h-6 w-6 items-center justify-center rounded-md text-neutral-500 hover:bg-white/10 hover:text-white"
+              >
+                <Pencil className="h-3 w-3" />
+              </button>
+              <button
+                type="button"
+                aria-label="Delete list"
+                onClick={() => confirmDelete(list)}
+                className="flex h-6 w-6 items-center justify-center rounded-md text-neutral-500 hover:bg-white/10 hover:text-white"
+              >
+                <Trash2 className="h-3 w-3" />
+              </button>
+            </span>
+          )
           return navItem(list.id, list.name, list.movies_count ?? list.movies?.length ?? 0, controls)
         })}
       </div>

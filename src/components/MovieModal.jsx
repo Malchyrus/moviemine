@@ -209,7 +209,7 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
                     </div>
 
                     <Button
-                      variant={watched ? 'danger' : 'outline'}
+                      variant={watched ? 'success' : 'outline'}
                       onClick={guarded(() => setWatched(movie.id, !watched))}
                     >
                       {watched ? (
@@ -238,7 +238,7 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
                       </Button>
                     )}
                     <Button
-                      variant={inList ? 'danger' : 'outline'}
+                      variant={inList ? 'accent' : 'outline'}
                       onClick={guarded(() => toggle(details || movie))}
                     >
                       {inList ? (

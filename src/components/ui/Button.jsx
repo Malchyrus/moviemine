@@ -9,6 +9,8 @@ const variants = {
     'bg-white/5 text-neutral-100 border border-white/10 hover:bg-white/10 backdrop-blur',
   danger:
     'bg-red-500/90 text-white hover:bg-red-500 shadow-[0_8px_30px_rgba(239,68,68,0.3)]',
+  success:
+    'bg-emerald-500/90 text-white hover:bg-emerald-500 shadow-[0_8px_30px_rgba(16,185,129,0.3)]',
   accent:
     'bg-gradient-to-r from-cyan-500 to-sky-500 text-white hover:from-cyan-400 hover:to-sky-400 shadow-[0_8px_30px_rgba(34,211,238,0.35)]',
 }

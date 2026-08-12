@@ -63,7 +63,11 @@ export default function MovieCard({ movie, index = 0, onView }) {
             e.stopPropagation()
             toggle(movie)
           }}
-          className="absolute right-2.5 top-2.5 flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-neutral-950/60 backdrop-blur transition-colors hover:bg-neutral-950"
+          className={`absolute right-2.5 top-2.5 flex h-9 w-9 items-center justify-center rounded-full border backdrop-blur transition-colors ${
+            inList
+              ? 'border-cyan-400/50 bg-cyan-500/90 hover:bg-cyan-500'
+              : 'border-white/10 bg-neutral-950/60 hover:bg-neutral-950'
+          }`}
         >
           <motion.span
             key={inList ? 'in' : 'out'}
@@ -72,7 +76,7 @@ export default function MovieCard({ movie, index = 0, onView }) {
             className="flex items-center justify-center"
           >
             {inList ? (
-              <Check className="h-4 w-4 text-cyan-400" />
+              <Check className="h-4 w-4 text-white" />
             ) : (
               <Bookmark className="h-4 w-4 text-white" />
             )}

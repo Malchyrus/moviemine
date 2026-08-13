@@ -1,14 +1,15 @@
 import { motion } from 'framer-motion'
-import { Bookmark, Check, Eye, Star } from 'lucide-react'
+import { Bookmark, Check, Clapperboard, Eye, Star } from 'lucide-react'
 import { useLibrary } from '../lib/library'
-import { imageFallback } from '../lib/api'
+import { imageFallback, mediaTypeOf } from '../lib/api'
 import AddToList from './AddToList'
 
 export default function MovieCard({ movie, index = 0, onView }) {
   const { has, toggle, entry } = useLibrary()
-  const inList = has(movie.id)
-  const watched = entry(movie.id)?.watched || false
-  const myRating = entry(movie.id)?.rating || null
+  const mediaType = mediaTypeOf(movie)
+  const inList = has(movie.id, mediaType)
+  const watched = entry(movie.id, mediaType)?.watched || false
+  const myRating = entry(movie.id, mediaType)?.rating || null
   const poster = imageFallback(movie)
 
   return (
@@ -38,6 +39,12 @@ export default function MovieCard({ movie, index = 0, onView }) {
         <div className="absolute inset-0 bg-gradient-to-t from-neutral-950 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
 
         <div className="absolute left-2.5 top-2.5 flex flex-col gap-1.5">
+          {mediaType === 'tv' && (
+            <span className="flex items-center gap-1 rounded-full border border-cyan-400/30 bg-cyan-950/80 px-2.5 py-1 text-[11px] font-semibold text-cyan-300 backdrop-blur">
+              <Clapperboard className="h-3 w-3" />
+              TV
+            </span>
+          )}
           {watched && (
             <motion.span
               initial={{ scale: 0 }}

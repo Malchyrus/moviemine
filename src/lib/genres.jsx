@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react'
-import { fetchGenres } from './api'
+import { fetchGenres, fetchGenresTv } from './api'
 
 const FALLBACK = {
   28: 'Action',
@@ -21,6 +21,14 @@ const FALLBACK = {
   53: 'Thriller',
   10752: 'War',
   37: 'Western',
+  10759: 'Action & Adventure',
+  10762: 'Kids',
+  10763: 'News',
+  10764: 'Reality',
+  10765: 'Sci-Fi & Fantasy',
+  10766: 'Soap',
+  10767: 'Talk',
+  10768: 'War & Politics',
 }
 
 const GenreContext = createContext(FALLBACK)
@@ -29,12 +37,15 @@ export function GenreProvider({ children }) {
   const [genres, setGenres] = useState(FALLBACK)
 
   useEffect(() => {
-    fetchGenres()
-      .then(({ genres: list }) => {
+    Promise.allSettled([fetchGenres(), fetchGenresTv()])
+      .then(([movie, tv]) => {
         const map = {}
-        list.forEach((g) => {
-          map[g.id] = g.name
-        })
+        const add = (list) =>
+          (list || []).forEach((g) => {
+            map[g.id] = g.name
+          })
+        add(movie.value?.genres)
+        add(tv.value?.genres)
         setGenres({ ...FALLBACK, ...map })
       })
       .catch(() => {})

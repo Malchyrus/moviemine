@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { fetchTrending, fetchPopular, fetchUpcoming, fetchTopRated, fetchRecommendations } from '../lib/api'
+import { fetchTrendingAll, fetchPopular, fetchPopularTv, fetchUpcoming, fetchTopRated, fetchRecommendations } from '../lib/api'
 import { useAuth } from '../lib/auth'
 import Hero from '../components/Hero'
 import MovieRow from '../components/MovieRow'
@@ -20,6 +20,7 @@ export default function Home({ onView }) {
   const { user } = useAuth()
   const [trending, setTrending] = useState([])
   const [popular, setPopular] = useState([])
+  const [popularTv, setPopularTv] = useState([])
   const [upcoming, setUpcoming] = useState([])
   const [topRated, setTopRated] = useState([])
   const [recommended, setRecommended] = useState([])
@@ -32,16 +33,18 @@ export default function Home({ onView }) {
     setError('')
     if (attempt === 1) setLoading(true)
     try {
-      const [t, p, u, tr] = await Promise.all([
-        fetchTrending('week'),
+      const [t, p, u, tr, ptv] = await Promise.all([
+        fetchTrendingAll(),
         fetchPopular(),
         fetchUpcoming(),
         fetchTopRated(),
+        fetchPopularTv(),
       ])
       setTrending(shuffle(t.results || []))
       setPopular(p.results || [])
       setUpcoming(u.results || [])
       setTopRated(tr.results || [])
+      setPopularTv(ptv.results || [])
       setLoading(false)
     } catch (e) {
       if (attempt < 4) {
@@ -109,6 +112,12 @@ export default function Home({ onView }) {
           <MovieRow
             title="Popular right now"
             movies={popular}
+            loading={loading}
+            onView={onView}
+          />
+          <MovieRow
+            title="Popular TV shows"
+            movies={popularTv}
             loading={loading}
             onView={onView}
           />

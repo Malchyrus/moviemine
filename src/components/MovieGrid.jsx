@@ -1,4 +1,5 @@
 import { motion } from 'framer-motion'
+import { mediaTypeOf } from '../lib/api'
 import MovieCard from './MovieCard'
 import SkeletonCard from './SkeletonCard'
 
@@ -19,7 +20,7 @@ export default function MovieGrid({ title, movies, loading, onView }) {
       ) : (
         <motion.div layout className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           {movies.map((movie, i) => (
-            <MovieCard key={movie.id} movie={movie} index={i} onView={onView} />
+            <MovieCard key={`${mediaTypeOf(movie)}-${movie.id}`} movie={movie} index={i} onView={onView} />
           ))}
         </motion.div>
       )}

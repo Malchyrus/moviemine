@@ -7,9 +7,18 @@ const API = API_BASE
 
 const LibraryContext = createContext(null)
 
+function typeOf(movie) {
+  return (movie && movie.media_type) || 'movie'
+}
+
+function sameMovie(a, b) {
+  return !!a && !!b && a.id === b.id && typeOf(a) === typeOf(b)
+}
+
 function snapshot(movie) {
   return {
     id: movie.id,
+    media_type: typeOf(movie),
     title: movie.title,
     poster_path: movie.poster_path,
     backdrop_path: movie.backdrop_path,
@@ -93,10 +102,10 @@ export function LibraryProvider({ children }) {
   const toggle = useCallback(
     (movie) => {
       setEntries((prev) => {
-        const exists = prev.some((e) => e.movie.id === movie.id)
+        const exists = prev.some((e) => sameMovie(e.movie, movie))
         if (exists) {
-          request(`/api/movies/${movie.id}`, { method: 'DELETE' }).catch(() => {})
-          return prev.filter((e) => e.movie.id !== movie.id)
+          request(`/api/movies/${movie.id}?media_type=${typeOf(movie)}`, { method: 'DELETE' }).catch(() => {})
+          return prev.filter((e) => !sameMovie(e.movie, movie))
         }
         const data = snapshot(movie)
         request('/api/movies', { method: 'POST', body: JSON.stringify(data) })
@@ -104,7 +113,7 @@ export function LibraryProvider({ children }) {
           .catch(() => {})
         return [
           ...prev,
-          { movie: data, watched: false, rating: null, addedAt: Date.now() },
+          { movie: data, watched: false, rating: null, addedAt: Date.now(), watched_episodes: [], total_episodes: 0 },
         ]
       })
     },
@@ -114,28 +123,32 @@ export function LibraryProvider({ children }) {
   const setWatched = useCallback(
     (movie, watched) => {
       const data = snapshot(movie)
+      const mediaType = typeOf(movie)
       setEntries((prev) => {
-        const exists = prev.some((e) => e.movie.id === movie.id)
+        const exists = prev.some((e) => sameMovie(e.movie, movie))
         if (!exists) {
           if (!watched) return prev
           request('/api/movies', { method: 'POST', body: JSON.stringify(data) })
             .then(() =>
               request(`/api/movies/${movie.id}`, {
                 method: 'PATCH',
-                body: JSON.stringify({ watched }),
+                body: JSON.stringify({ watched, media_type: mediaType }),
               }),
             )
             .then(() => refreshLists())
             .catch(() => {})
-          return [...prev, { movie: data, watched, rating: null, addedAt: Date.now() }]
+          return [
+            ...prev,
+            { movie: data, watched, rating: null, addedAt: Date.now(), watched_episodes: [], total_episodes: 0 },
+          ]
         }
         request(`/api/movies/${movie.id}`, {
           method: 'PATCH',
-          body: JSON.stringify({ watched }),
+          body: JSON.stringify({ watched, media_type: mediaType }),
         })
           .then(() => refreshLists())
           .catch(() => {})
-        return prev.map((e) => (e.movie.id === movie.id ? { ...e, watched } : e))
+        return prev.map((e) => (sameMovie(e.movie, movie) ? { ...e, watched } : e))
       })
     },
     [refreshLists],
@@ -144,28 +157,32 @@ export function LibraryProvider({ children }) {
   const setRating = useCallback(
     (movie, rating) => {
       const data = snapshot(movie)
+      const mediaType = typeOf(movie)
       setEntries((prev) => {
-        const exists = prev.some((e) => e.movie.id === movie.id)
+        const exists = prev.some((e) => sameMovie(e.movie, movie))
         if (!exists) {
           if (rating == null) return prev
           request('/api/movies', { method: 'POST', body: JSON.stringify(data) })
             .then(() =>
               request(`/api/movies/${movie.id}`, {
                 method: 'PATCH',
-                body: JSON.stringify({ rating }),
+                body: JSON.stringify({ rating, media_type: mediaType }),
               }),
             )
             .then(() => refreshLists())
             .catch(() => {})
-          return [...prev, { movie: data, watched: false, rating, addedAt: Date.now() }]
+          return [
+            ...prev,
+            { movie: data, watched: false, rating, addedAt: Date.now(), watched_episodes: [], total_episodes: 0 },
+          ]
         }
         request(`/api/movies/${movie.id}`, {
           method: 'PATCH',
-          body: JSON.stringify({ rating }),
+          body: JSON.stringify({ rating, media_type: mediaType }),
         })
           .then(() => refreshLists())
           .catch(() => {})
-        return prev.map((e) => (e.movie.id === movie.id ? { ...e, rating } : e))
+        return prev.map((e) => (sameMovie(e.movie, movie) ? { ...e, rating } : e))
       })
     },
     [refreshLists],
@@ -189,9 +206,9 @@ export function LibraryProvider({ children }) {
         if (data && data.id && Array.isArray(data.movies)) mergeList(data)
         else refreshLists()
         setEntries((prev) =>
-          prev.some((e) => e.movie.id === movie.id)
+          prev.some((e) => sameMovie(e.movie, movie))
             ? prev
-            : [...prev, { movie: snapshot(movie), watched: false, rating: null, addedAt: Date.now() }],
+            : [...prev, { movie: snapshot(movie), watched: false, rating: null, addedAt: Date.now(), watched_episodes: [], total_episodes: 0 }],
         )
       })
     },
@@ -199,8 +216,8 @@ export function LibraryProvider({ children }) {
   )
 
   const removeFromList = useCallback(
-    (tmdbId, listId) => {
-      return request(`/api/lists/${listId}/movies/${tmdbId}`, { method: 'DELETE' }).then(
+    (tmdbId, listId, mediaType = 'movie') => {
+      return request(`/api/lists/${listId}/movies/${tmdbId}?media_type=${mediaType}`, { method: 'DELETE' }).then(
         (data) => {
           if (data && data.id && Array.isArray(data.movies)) mergeList(data)
           else refreshLists()
@@ -208,8 +225,8 @@ export function LibraryProvider({ children }) {
             const updated = data && data.id && Array.isArray(data.movies) ? data : null
             const stillSomewhere = [updated, ...lists.filter((l) => l.id !== updated?.id)]
               .filter(Boolean)
-              .some((l) => (l.movies || []).some((m) => m.id === tmdbId))
-            return stillSomewhere ? prev : prev.filter((e) => e.movie.id !== tmdbId)
+              .some((l) => (l.movies || []).some((m) => m.id === tmdbId && typeOf(m) === mediaType))
+            return stillSomewhere ? prev : prev.filter((e) => !(e.movie.id === tmdbId && typeOf(e.movie) === mediaType))
           })
         },
       )
@@ -217,10 +234,10 @@ export function LibraryProvider({ children }) {
     [refreshLists, mergeList, lists],
   )
 
-  const moveToList = useCallback((tmdbId, targetListId) => {
+  const moveToList = useCallback((tmdbId, targetListId, mediaType = 'movie') => {
     return request(`/api/lists/${targetListId}/move`, {
       method: 'POST',
-      body: JSON.stringify({ tmdb_id: tmdbId }),
+      body: JSON.stringify({ tmdb_id: tmdbId, media_type: mediaType }),
     }).then((data) => {
       if (data && Array.isArray(data.lists)) setLists(data.lists)
       else refreshLists()
@@ -284,9 +301,42 @@ export function LibraryProvider({ children }) {
       .catch(() => {})
   }, [])
 
-  const has = useCallback((id) => entries.some((e) => e.movie.id === id), [entries])
+  const setEpisode = useCallback((movie, season, episode, watched) => {
+    return request(`/api/movies/${movie.id}/episodes`, {
+      method: 'PATCH',
+      body: JSON.stringify({
+        media_type: typeOf(movie),
+        season_number: season,
+        episode_number: episode,
+        watched,
+      }),
+    })
+      .then((data) => {
+        if (data && typeof data.watched === 'boolean') {
+          setEntries((prev) =>
+            prev.map((e) =>
+              sameMovie(e.movie, movie)
+                ? {
+                    ...e,
+                    watched: data.watched,
+                    watched_episodes: data.watched_episodes ?? e.watched_episodes,
+                    total_episodes: data.total_episodes ?? e.total_episodes,
+                  }
+                : e,
+            ),
+          )
+        }
+        return data
+      })
+      .catch(() => {})
+  }, [])
+
+  const has = useCallback(
+    (id, mediaType = 'movie') => entries.some((e) => e.movie.id === id && typeOf(e.movie) === mediaType),
+    [entries],
+  )
   const entry = useCallback(
-    (id) => entries.find((e) => e.movie.id === id),
+    (id, mediaType = 'movie') => entries.find((e) => e.movie.id === id && typeOf(e.movie) === mediaType),
     [entries],
   )
 
@@ -313,6 +363,7 @@ export function LibraryProvider({ children }) {
       entry,
       setWatched,
       setRating,
+      setEpisode,
       counts,
       refreshLibrary,
       refreshLists,
@@ -339,6 +390,7 @@ export function LibraryProvider({ children }) {
       entry,
       setWatched,
       setRating,
+      setEpisode,
       counts,
       refreshLibrary,
       refreshLists,

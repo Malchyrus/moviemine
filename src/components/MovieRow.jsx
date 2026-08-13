@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { mediaTypeOf } from '../lib/api'
 import MovieCard from './MovieCard'
 import SkeletonCard from './SkeletonCard'
 
@@ -61,7 +62,7 @@ export default function MovieRow({ title, movies, loading, onView }) {
             ))
           : movies.map((movie, i) => (
               <div
-                key={movie.id}
+                key={`${mediaTypeOf(movie)}-${movie.id}`}
                 className="w-40 shrink-0 snap-start sm:w-48"
               >
                 <MovieCard movie={movie} index={i} onView={onView} />

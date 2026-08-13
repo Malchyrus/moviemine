@@ -1,14 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Star, TrendingUp } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Clapperboard, Star, TrendingUp } from 'lucide-react'
+import { mediaTypeOf } from '../lib/api'
 import Button from './ui/Button'
 
 const INTERVAL = 7000
+
+const slideKey = (movie) => `${mediaTypeOf(movie)}-${movie.id}`
 
 function Slide({ movie, onView }) {
   if (!movie) return null
 
   const backdrop = movie.backdrop_path
+  const isTv = mediaTypeOf(movie) === 'tv'
 
   return (
     <motion.div
@@ -48,6 +52,12 @@ function Slide({ movie, onView }) {
             <TrendingUp className="h-3.5 w-3.5 text-cyan-400" />
             Trending this week
           </span>
+          {isTv && (
+            <span className="mb-5 ml-2 inline-flex items-center gap-1.5 rounded-full border border-cyan-400/30 bg-cyan-950/70 px-3 py-1.5 text-xs font-semibold text-cyan-300 backdrop-blur">
+              <Clapperboard className="h-3.5 w-3.5" />
+              TV Show
+            </span>
+          )}
         </motion.div>
 
         <motion.h1
@@ -144,7 +154,7 @@ export default function Hero({ movies, onView }) {
       onFocus={() => setPaused(true)}
       onBlur={() => setPaused(false)}
     >
-      <AnimatePresence>{current && <Slide key={current.id} movie={current} onView={onView} />}</AnimatePresence>
+      <AnimatePresence>{current && <Slide key={slideKey(current)} movie={current} onView={onView} />}</AnimatePresence>
 
       {count > 1 && (
         <>
@@ -168,7 +178,7 @@ export default function Hero({ movies, onView }) {
           <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2">
             {movies.map((m, i) => (
               <button
-                key={m.id}
+                key={slideKey(m)}
                 type="button"
                 aria-label={`Show ${m.title}`}
                 onClick={() => setActive(i)}

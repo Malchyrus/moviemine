@@ -1,10 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Bookmark, Calendar, Check, Clock, ExternalLink, Eye, EyeOff, MonitorPlay, Play, Star, X } from 'lucide-react'
-import { fetchMovieDetails, fetchWatchProviders, fetchRegions, IMG } from '../lib/api'
+import { Bookmark, Calendar, Check, Clapperboard, Clock, ExternalLink, Eye, EyeOff, MonitorPlay, Play, Star, X } from 'lucide-react'
+import { fetchTitleDetails, fetchWatchProviders, fetchSeason, fetchRegions, IMG, mediaTypeOf } from '../lib/api'
 import { useLibrary } from '../lib/library'
 import { useAuth } from '../lib/auth'
-import { useGenres } from '../lib/genres'
 import { formatDate, formatRuntime } from '../lib/format'
 import Button from './ui/Button'
 import RatingStars from './ui/RatingStars'
@@ -16,19 +15,26 @@ const GROUPS = [
   { key: 'buy', label: 'Buy' },
 ]
 
+const episodeKey = (season, episode) => `${season}:${episode}`
+
 export default function MovieModal({ movie, onClose, onRequireAuth }) {
+  const mediaType = mediaTypeOf(movie)
+  const isTv = mediaType === 'tv'
   const [details, setDetails] = useState(null)
   const [providers, setProviders] = useState(null)
   const [regions, setRegions] = useState([])
   const [region, setRegion] = useState('')
   const [providersLoading, setProvidersLoading] = useState(true)
   const [providersError, setProvidersError] = useState(false)
-  const { has, toggle, entry, setWatched, setRating, preferences } = useLibrary()
+  const [activeSeason, setActiveSeason] = useState(null)
+  const [seasonEpisodes, setSeasonEpisodes] = useState([])
+  const [seasonLoading, setSeasonLoading] = useState(false)
+  const { has, toggle, entry, setWatched, setRating, setEpisode, preferences } = useLibrary()
   const { user } = useAuth()
-  const genres = useGenres()
-  const inList = has(movie.id)
-  const watched = entry(movie.id)?.watched || false
-  const myRating = entry(movie.id)?.rating || null
+  const inList = has(movie.id, mediaType)
+  const showEntry = entry(movie.id, mediaType)
+  const watched = showEntry?.watched || false
+  const myRating = showEntry?.rating || null
   const bestMovie = details && details.genres ? details : movie
 
   function guarded(action) {
@@ -42,10 +48,10 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
   }
 
   useEffect(() => {
-    fetchMovieDetails(movie.id)
+    fetchTitleDetails(movie.id, mediaType)
       .then(setDetails)
       .catch(() => setDetails({}))
-  }, [movie.id])
+  }, [movie.id, mediaType])
 
   function resolveRegion(list) {
     const codes = new Set((list || []).map((r) => r.iso_3166_1))
@@ -81,7 +87,7 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
     let active = true
     setProvidersLoading(true)
     setProvidersError(false)
-    fetchWatchProviders(movie.id, region)
+    fetchWatchProviders(movie.id, region, mediaType)
       .then(setProviders)
       .catch(() => {
         if (active) setProvidersError(true)
@@ -92,7 +98,7 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
     return () => {
       active = false
     }
-  }, [movie.id, region])
+  }, [movie.id, region, mediaType])
 
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onClose()
@@ -104,12 +110,64 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
     }
   }, [onClose])
 
+  const seasonList = useMemo(
+    () => (details?.seasons || []).filter((s) => s.season_number > 0),
+    [details],
+  )
+
+  useEffect(() => {
+    if (!isTv || activeSeason !== null) return
+    const last = seasonList[seasonList.length - 1]
+    if (last) setActiveSeason(last.season_number)
+  }, [isTv, activeSeason, seasonList])
+
+  useEffect(() => {
+    if (!isTv || activeSeason == null) return
+    let active = true
+    setSeasonLoading(true)
+    fetchSeason(movie.id, activeSeason)
+      .then((data) => {
+        if (active) setSeasonEpisodes(data.episodes || [])
+      })
+      .catch(() => {
+        if (active) setSeasonEpisodes([])
+      })
+      .finally(() => {
+        if (active) setSeasonLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [isTv, movie.id, activeSeason])
+
+  const watchedSet = useMemo(
+    () => new Set(showEntry?.watched_episodes || []),
+    [showEntry?.watched_episodes],
+  )
+  const tvTotal = showEntry?.total_episodes || 0
+  const tvWatched = showEntry?.watched ? tvTotal : watchedSet.size
+
+  const episodeOn = (ep) =>
+    showEntry?.watched ? true : watchedSet.has(episodeKey(activeSeason, ep.episode_number))
+
+  const toggleEpisode = (ep) => {
+    if (!user) {
+      onRequireAuth?.()
+      return
+    }
+    setEpisode(bestMovie, activeSeason, ep.episode_number, !episodeOn(ep))
+  }
+
   const trailer = details?.videos?.results?.find((v) => v.type === 'Trailer' && v.site === 'YouTube')
 
   const regionData = providers?.results?.[region] || null
   const watchLink = regionData?.link || null
   const regionName =
     regions.find((r) => r.iso_3166_1 === region)?.english_name || region || 'your region'
+
+  const runtimeLabel = isTv
+    ? formatRuntime(details?.episode_run_time?.[0])
+    : formatRuntime(details?.runtime)
 
   return (
     <AnimatePresence>
@@ -174,6 +232,13 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
                   ))}
                 </div>
 
+                {isTv && (
+                  <span className="mt-3 inline-flex items-center gap-1.5 rounded-full border border-cyan-400/30 bg-cyan-950/70 px-3 py-1 text-xs font-semibold text-cyan-300">
+                    <Clapperboard className="h-3.5 w-3.5" />
+                    TV Show
+                  </span>
+                )}
+
                 <h2 className="mt-3 text-3xl font-bold tracking-tight text-white">
                   {details?.title || movie.title}
                 </h2>
@@ -192,10 +257,19 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
                     <Calendar className="h-4 w-4" />
                     {formatDate(details?.release_date)}
                   </span>
-                  <span className="flex items-center gap-1.5">
-                    <Clock className="h-4 w-4" />
-                    {formatRuntime(details?.runtime)}
-                  </span>
+                  {runtimeLabel && (
+                    <span className="flex items-center gap-1.5">
+                      <Clock className="h-4 w-4" />
+                      {runtimeLabel}
+                    </span>
+                  )}
+                  {isTv && (details?.number_of_seasons ?? 0) > 0 && (
+                    <span className="flex items-center gap-1.5">
+                      <MonitorPlay className="h-4 w-4" />
+                      {details.number_of_seasons}{' '}
+                      {details.number_of_seasons === 1 ? 'season' : 'seasons'}
+                    </span>
+                  )}
                 </div>
 
                 <p className="mt-5 text-[15px] leading-relaxed text-neutral-300">
@@ -220,11 +294,13 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
                     >
                       {watched ? (
                         <>
-                          <EyeOff className="h-4 w-4" /> Mark as unwatched
+                          <EyeOff className="h-4 w-4" /> Mark as{' '}
+                          {isTv ? 'whole show' : ''} unwatched
                         </>
                       ) : (
                         <>
-                          <Eye className="h-4 w-4" /> Mark as watched
+                          <Eye className="h-4 w-4" /> Mark as{' '}
+                          {isTv ? 'whole show' : ''} watched
                         </>
                       )}
                     </Button>
@@ -262,6 +338,84 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
                   </div>
                 </div>
 
+                {isTv && inList && (
+                  <div className="mt-8 border-t border-white/10 pt-6">
+                    <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                      <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-neutral-500">
+                        <Clapperboard className="h-4 w-4 text-cyan-400" />
+                        Episodes
+                      </h3>
+                      {tvTotal > 0 && (
+                        <span className="text-xs font-medium text-neutral-400">
+                          {tvWatched} / {tvTotal} watched
+                        </span>
+                      )}
+                    </div>
+
+                    {seasonList.length > 0 && (
+                      <select
+                        value={activeSeason ?? ''}
+                        onChange={(e) => setActiveSeason(Number(e.target.value))}
+                        aria-label="Season"
+                        className="mb-4 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-neutral-200 outline-none transition-colors focus:border-cyan-500/50 [&>option]:bg-neutral-900"
+                      >
+                        {seasonList.map((s) => (
+                          <option key={s.season_number} value={s.season_number}>
+                            {s.name || `Season ${s.season_number}`} · {s.episode_count}{' '}
+                            {s.episode_count === 1 ? 'episode' : 'episodes'}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+
+                    {seasonLoading ? (
+                      <div className="space-y-2">
+                        {Array.from({ length: 6 }).map((_, i) => (
+                          <div key={i} className="h-12 animate-pulse rounded-xl bg-white/5" />
+                        ))}
+                      </div>
+                    ) : seasonEpisodes.length === 0 ? (
+                      <p className="text-sm text-neutral-500">Couldn't load episodes.</p>
+                    ) : (
+                      <ul className="max-h-72 space-y-1.5 overflow-y-auto pr-1">
+                        {seasonEpisodes.map((ep) => {
+                          const on = episodeOn(ep)
+                          return (
+                            <li key={ep.id ?? episodeKey(activeSeason, ep.episode_number)}>
+                              <button
+                                type="button"
+                                onClick={() => toggleEpisode(ep)}
+                                className="flex w-full items-center gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2.5 text-left transition-colors hover:border-cyan-500/40"
+                              >
+                                <span
+                                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border text-[10px] transition-colors ${
+                                    on
+                                      ? 'border-cyan-400 bg-cyan-500 text-white'
+                                      : 'border-white/20 text-transparent'
+                                  }`}
+                                >
+                                  <Check className="h-3 w-3" />
+                                </span>
+                                <span className="w-8 shrink-0 text-xs font-semibold text-neutral-400">
+                                  E{ep.episode_number}
+                                </span>
+                                <span className="min-w-0 flex-1 truncate text-sm text-neutral-200">
+                                  {ep.name || `Episode ${ep.episode_number}`}
+                                </span>
+                                {ep.runtime ? (
+                                  <span className="shrink-0 text-xs text-neutral-500">
+                                    {formatRuntime(ep.runtime)}
+                                  </span>
+                                ) : null}
+                              </button>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                )}
+
                 <div className="mt-8 border-t border-white/10 pt-6">
                   <div className="mb-4 flex items-center justify-between gap-3">
                     <h3 className="flex items-center gap-2 text-sm font-semibold uppercase tracking-wider text-neutral-500">
@@ -292,7 +446,7 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
                     </div>
                   ) : providersError ? (
                     <p className="text-sm text-neutral-500">
-                      Couldn't load providers for this movie.
+                      Couldn't load providers for this {isTv ? 'show' : 'movie'}.
                     </p>
                   ) : regionData ? (
                     GROUPS.map((group) => {

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
-import { searchMovies } from '../lib/api'
+import { searchTitles, mediaTypeOf } from '../lib/api'
 import { useGenres } from '../lib/genres'
 import SearchBar from '../components/SearchBar'
 import GenreFilter, { cycleGenre, matchesGenreFilters } from '../components/GenreFilter'
@@ -10,11 +10,20 @@ import MovieCard from '../components/MovieCard'
 import SkeletonCard, { EmptyState } from '../components/SkeletonCard'
 import Button from '../components/ui/Button'
 
+const MEDIA_OPTIONS = [
+  { key: 'all', label: 'All' },
+  { key: 'movie', label: 'Movies' },
+  { key: 'tv', label: 'TV shows' },
+]
+
+const cardKey = (movie) => `${mediaTypeOf(movie)}-${movie.id}`
+
 export default function SearchPage({ onView }) {
   const [params, setParams] = useSearchParams()
   const q = params.get('q') || ''
   const genres = useGenres()
   const [input, setInput] = useState(q)
+  const [media, setMedia] = useState('all')
   const [movies, setMovies] = useState([])
   const [page, setPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
@@ -33,7 +42,7 @@ export default function SearchPage({ onView }) {
     setLoading(true)
     setError('')
     try {
-      const data = await searchMovies(query, pg)
+      const data = await searchTitles(query, pg, media)
       if (seq !== searchSeq.current) return
       setMovies((prev) => (pg === 1 ? data.results || [] : [...prev, ...(data.results || [])]))
       setPage(pg)
@@ -46,7 +55,7 @@ export default function SearchPage({ onView }) {
     } finally {
       if (seq === searchSeq.current) setLoading(false)
     }
-  }, [])
+  }, [media])
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -64,7 +73,7 @@ export default function SearchPage({ onView }) {
     setIncluded(new Set())
     setExcluded(new Set())
     runSearch(trimmed, 1, seq)
-  }, [q, runSearch])
+  }, [q, media, runSearch])
 
   const loadMore = () => {
     const trimmed = q.trim()
@@ -124,7 +133,23 @@ export default function SearchPage({ onView }) {
         </aside>
 
         <section className="min-w-0">
-          <div className="mb-4 flex items-center gap-2 text-sm text-neutral-400">
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-sm text-neutral-400">
+            <div className="flex rounded-full border border-white/10 bg-white/5 p-1">
+              {MEDIA_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => setMedia(opt.key)}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition-colors ${
+                    media === opt.key
+                      ? 'bg-cyan-500 text-white'
+                      : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
             <span className="font-semibold text-white">
               {searching ? `Results for “${q.trim()}”` : 'Search'}
             </span>
@@ -194,7 +219,7 @@ export default function SearchPage({ onView }) {
                 className="grid grid-cols-2 gap-4 pb-8 sm:grid-cols-3 xl:grid-cols-5"
               >
                 {filtered.map((m, i) => (
-                  <MovieCard key={m.id} movie={m} index={i} onView={onView} />
+                  <MovieCard key={cardKey(m)} movie={m} index={i} onView={onView} />
                 ))}
               </motion.div>
 

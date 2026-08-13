@@ -19,6 +19,7 @@ import {
 import { useLibrary } from '../lib/library'
 import { useAuth } from '../lib/auth'
 import { useGenres } from '../lib/genres'
+import { mediaTypeOf } from '../lib/api'
 import { resizeCover } from '../lib/image'
 import GenreFilter, { cycleGenre, matchesGenreFilters, normalizeCounts } from './GenreFilter'
 import MovieCard from './MovieCard'
@@ -659,7 +660,7 @@ export default function Library({ onView, onOpenAuth }) {
   const entryOf = useCallback(
     (item) => {
       const m = getMovie(item)
-      const e = entries.find((x) => x.movie.id === m.id)
+      const e = entries.find((x) => x.movie.id === m.id && mediaTypeOf(x.movie) === mediaTypeOf(m))
       return e ? e.rating : null
     },
     [entries],
@@ -899,9 +900,17 @@ export default function Library({ onView, onOpenAuth }) {
                   transition={{ duration: 0.25 }}
                   className="grid grid-cols-2 gap-4 pb-8 sm:grid-cols-3 xl:grid-cols-5"
                 >
-                  {paged.map((item, i) => (
-                    <MovieCard key={getMovie(item).id} movie={getMovie(item)} index={i} onView={onView} />
-                  ))}
+                  {paged.map((item, i) => {
+                    const m = getMovie(item)
+                    return (
+                      <MovieCard
+                        key={`${mediaTypeOf(m)}-${m.id}`}
+                        movie={m}
+                        index={i}
+                        onView={onView}
+                      />
+                    )
+                  })}
                 </motion.div>
                 {filtered.length > PAGE_SIZE && (
                   <div className="flex flex-col items-center gap-3 pb-8">

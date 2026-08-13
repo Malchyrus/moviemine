@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { Check, ListPlus, Loader2, Plus } from 'lucide-react'
 import { useLibrary } from '../lib/library'
 import { useAuth } from '../lib/auth'
+import { mediaTypeOf } from '../lib/api'
 
 const MENU_WIDTH = 240
 const GAP = 8
@@ -53,8 +54,12 @@ export default function AddToList({ movie, align = 'right', className = '' }) {
     return () => document.removeEventListener('mousedown', onClick)
   }, [open])
 
+  const mediaType = mediaTypeOf(movie)
+
   const membership = (listId) =>
-    (lists.find((l) => l.id === listId)?.movies || []).some((m) => m.id === movie.id)
+    (lists.find((l) => l.id === listId)?.movies || []).some(
+      (m) => m.id === movie.id && mediaTypeOf(m) === mediaType,
+    )
 
   async function handleToggle(listId) {
     if (busyRef.current) return
@@ -62,7 +67,7 @@ export default function AddToList({ movie, align = 'right', className = '' }) {
     setBusy(listId)
     setOpen(false)
     try {
-      if (membership(listId)) await removeFromList(movie.id, listId)
+      if (membership(listId)) await removeFromList(movie.id, listId, mediaType)
       else await addToList(movie, listId)
     } catch {
       // ignored

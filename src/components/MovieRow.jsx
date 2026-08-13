@@ -50,7 +50,7 @@ export default function MovieRow({ title, movies, loading, onView }) {
       <motion.div
         ref={scrollRef}
         onScroll={onScroll}
-        className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6"
+        className="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto overflow-y-hidden px-4 pb-2 sm:-mx-6 sm:px-6"
         style={{ scrollbarWidth: 'thin' }}
       >
         {loading

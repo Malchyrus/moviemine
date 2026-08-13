@@ -27,6 +27,7 @@ async function request(path, options = {}) {
   if (!res.ok) {
     const error = new Error(data?.error || data?.message || `Request failed: ${res.status}`)
     error.status = res.status
+    error.data = data
     throw error
   }
 
@@ -69,6 +70,10 @@ export function fetchGenres() {
   return request('/api/tmdb/genres')
 }
 
+export function fetchRecommendations() {
+  return request('/api/tmdb/recommendations')
+}
+
 export function registerUser(fields) {
   return request('/api/auth/register', {
     method: 'POST',
@@ -87,6 +92,22 @@ export function loginUser(credentials) {
 
 export function fetchMe() {
   return request('/api/auth/me')
+}
+
+export function updateMe(fields) {
+  return request('/api/auth/me', {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(fields),
+  })
+}
+
+export function changePassword(payload) {
+  return request('/api/auth/password', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
 }
 
 export function logoutUser() {

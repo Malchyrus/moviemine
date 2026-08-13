@@ -40,6 +40,16 @@ export function LibraryProvider({ children }) {
 
   const authed = !initializing && !!user
 
+  const refreshLibrary = useCallback(() => {
+    if (!authed) return Promise.resolve()
+    return Promise.all([request('/api/movies'), request('/api/lists'), request('/api/automations')])
+      .then(([moviesData, listsData, automationsData]) => {
+        setEntries(moviesData.movies || [])
+        setLists(listsData.lists || [])
+        setAutomations(automationsData.automations || [])
+      })
+  }, [authed])
+
   const refreshLists = useCallback(() => {
     request('/api/lists')
       .then((data) => setLists(data.lists || []))
@@ -68,13 +78,7 @@ export function LibraryProvider({ children }) {
     setLoading(true)
     setError('')
 
-    Promise.all([request('/api/movies'), request('/api/lists'), request('/api/automations')])
-      .then(([moviesData, listsData, automationsData]) => {
-        if (cancelled) return
-        setEntries(moviesData.movies || [])
-        setLists(listsData.lists || [])
-        setAutomations(automationsData.automations || [])
-      })
+    refreshLibrary()
       .catch(() => {
         if (!cancelled) setError('Could not reach the backend API.')
       })
@@ -84,7 +88,7 @@ export function LibraryProvider({ children }) {
     return () => {
       cancelled = true
     }
-  }, [authed, user])
+  }, [authed, user, refreshLibrary])
 
   const toggle = useCallback(
     (movie) => {
@@ -108,31 +112,61 @@ export function LibraryProvider({ children }) {
   )
 
   const setWatched = useCallback(
-    (id, watched) => {
-      setEntries((prev) =>
-        prev.map((e) => (e.movie.id === id ? { ...e, watched } : e)),
-      )
-      request(`/api/movies/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ watched }),
+    (movie, watched) => {
+      const data = snapshot(movie)
+      setEntries((prev) => {
+        const exists = prev.some((e) => e.movie.id === movie.id)
+        if (!exists) {
+          if (!watched) return prev
+          request('/api/movies', { method: 'POST', body: JSON.stringify(data) })
+            .then(() =>
+              request(`/api/movies/${movie.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ watched }),
+              }),
+            )
+            .then(() => refreshLists())
+            .catch(() => {})
+          return [...prev, { movie: data, watched, rating: null, addedAt: Date.now() }]
+        }
+        request(`/api/movies/${movie.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ watched }),
+        })
+          .then(() => refreshLists())
+          .catch(() => {})
+        return prev.map((e) => (e.movie.id === movie.id ? { ...e, watched } : e))
       })
-        .then(() => refreshLists())
-        .catch(() => {})
     },
     [refreshLists],
   )
 
   const setRating = useCallback(
-    (id, rating) => {
-      setEntries((prev) =>
-        prev.map((e) => (e.movie.id === id ? { ...e, rating } : e)),
-      )
-      request(`/api/movies/${id}`, {
-        method: 'PATCH',
-        body: JSON.stringify({ rating }),
+    (movie, rating) => {
+      const data = snapshot(movie)
+      setEntries((prev) => {
+        const exists = prev.some((e) => e.movie.id === movie.id)
+        if (!exists) {
+          if (rating == null) return prev
+          request('/api/movies', { method: 'POST', body: JSON.stringify(data) })
+            .then(() =>
+              request(`/api/movies/${movie.id}`, {
+                method: 'PATCH',
+                body: JSON.stringify({ rating }),
+              }),
+            )
+            .then(() => refreshLists())
+            .catch(() => {})
+          return [...prev, { movie: data, watched: false, rating, addedAt: Date.now() }]
+        }
+        request(`/api/movies/${movie.id}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ rating }),
+        })
+          .then(() => refreshLists())
+          .catch(() => {})
+        return prev.map((e) => (e.movie.id === movie.id ? { ...e, rating } : e))
       })
-        .then(() => refreshLists())
-        .catch(() => {})
     },
     [refreshLists],
   )
@@ -154,6 +188,11 @@ export function LibraryProvider({ children }) {
       }).then((data) => {
         if (data && data.id && Array.isArray(data.movies)) mergeList(data)
         else refreshLists()
+        setEntries((prev) =>
+          prev.some((e) => e.movie.id === movie.id)
+            ? prev
+            : [...prev, { movie: snapshot(movie), watched: false, rating: null, addedAt: Date.now() }],
+        )
       })
     },
     [refreshLists, mergeList],
@@ -161,13 +200,21 @@ export function LibraryProvider({ children }) {
 
   const removeFromList = useCallback(
     (tmdbId, listId) => {
-      return request(`/api/lists/${listId}/movies/${tmdbId}`, { method: 'DELETE' })
-        .then((data) => {
+      return request(`/api/lists/${listId}/movies/${tmdbId}`, { method: 'DELETE' }).then(
+        (data) => {
           if (data && data.id && Array.isArray(data.movies)) mergeList(data)
           else refreshLists()
-        })
+          setEntries((prev) => {
+            const updated = data && data.id && Array.isArray(data.movies) ? data : null
+            const stillSomewhere = [updated, ...lists.filter((l) => l.id !== updated?.id)]
+              .filter(Boolean)
+              .some((l) => (l.movies || []).some((m) => m.id === tmdbId))
+            return stillSomewhere ? prev : prev.filter((e) => e.movie.id !== tmdbId)
+          })
+        },
+      )
     },
-    [refreshLists, mergeList],
+    [refreshLists, mergeList, lists],
   )
 
   const moveToList = useCallback((tmdbId, targetListId) => {
@@ -267,6 +314,7 @@ export function LibraryProvider({ children }) {
       setWatched,
       setRating,
       counts,
+      refreshLibrary,
       refreshLists,
       addToList,
       removeFromList,
@@ -292,6 +340,7 @@ export function LibraryProvider({ children }) {
       setWatched,
       setRating,
       counts,
+      refreshLibrary,
       refreshLists,
       addToList,
       removeFromList,

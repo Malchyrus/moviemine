@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Clapperboard, LogOut, Search, User } from 'lucide-react'
+import { ChevronDown, Clapperboard, LogOut, Search, Settings, User } from 'lucide-react'
 import { useAuth } from '../lib/auth'
 import Button from './ui/Button'
 
@@ -9,6 +9,8 @@ export default function Navbar({ onOpenAuth, libraryCount }) {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
   const [scrolled, setScrolled] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -17,13 +19,17 @@ export default function Navbar({ onOpenAuth, libraryCount }) {
     return () => window.removeEventListener('scroll', onScroll)
   }, [])
 
+  useEffect(() => {
+    if (!menuOpen) return
+    const onPointerDown = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setMenuOpen(false)
+    }
+    window.addEventListener('pointerdown', onPointerDown)
+    return () => window.removeEventListener('pointerdown', onPointerDown)
+  }, [menuOpen])
+
   function goSearch() {
-    navigate('/')
-    setTimeout(() => {
-      const el = document.getElementById('search-input')
-      el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
-      el?.focus()
-    }, 150)
+    navigate('/search')
   }
 
   return (
@@ -75,22 +81,64 @@ export default function Navbar({ onOpenAuth, libraryCount }) {
           </NavLink>
 
           {user ? (
-            <div className="flex items-center gap-2">
-              <Button variant="ghost" size="sm">
-                <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-sky-500">
-                  <User className="h-3 w-3 text-white" />
-                </span>
+            <div className="relative" ref={menuRef}>
+              <Button variant="ghost" size="sm" onClick={() => setMenuOpen((o) => !o)}>
+                {user.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt=""
+                    className="h-5 w-5 rounded-full object-cover"
+                  />
+                ) : (
+                  <span className="flex h-5 w-5 items-center justify-center rounded-full bg-gradient-to-br from-cyan-500 to-sky-500">
+                    <User className="h-3 w-3 text-white" />
+                  </span>
+                )}
                 <span className="hidden max-w-24 truncate sm:inline">{user.name}</span>
+                <ChevronDown
+                  className={`h-3.5 w-3.5 text-neutral-500 transition-transform ${menuOpen ? 'rotate-180' : ''}`}
+                />
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => logout()}
-                title="Log out"
-                aria-label="Log out"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
+
+              <AnimatePresence>
+                {menuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                    transition={{ duration: 0.15 }}
+                    className="absolute right-0 top-full mt-2 w-52 overflow-hidden rounded-2xl border border-white/10 bg-neutral-900/95 py-1.5 shadow-2xl backdrop-blur-xl"
+                  >
+                    <Link
+                      to="/profile"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-300 transition-colors hover:bg-white/5 hover:text-white"
+                    >
+                      <User className="h-4 w-4 text-neutral-500" />
+                      Profile
+                    </Link>
+                    <Link
+                      to="/settings"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-neutral-300 transition-colors hover:bg-white/5 hover:text-white"
+                    >
+                      <Settings className="h-4 w-4 text-neutral-500" />
+                      Settings
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false)
+                        logout()
+                      }}
+                      className="flex w-full items-center gap-2.5 border-t border-white/10 px-4 py-2.5 text-left text-sm text-neutral-300 transition-colors hover:bg-white/5 hover:text-white"
+                    >
+                      <LogOut className="h-4 w-4 text-neutral-500" />
+                      Log out
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           ) : (
             <Button variant="accent" size="sm" onClick={onOpenAuth}>

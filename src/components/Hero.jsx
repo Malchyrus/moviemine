@@ -1,18 +1,27 @@
-import { motion } from 'framer-motion'
-import { Star, TrendingUp } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { ChevronLeft, ChevronRight, Star, TrendingUp } from 'lucide-react'
 import Button from './ui/Button'
 
-export default function Hero({ featured, onView }) {
-  if (!featured) return null
+const INTERVAL = 7000
 
-  const backdrop = featured.backdrop_path
+function Slide({ movie, onView }) {
+  if (!movie) return null
+
+  const backdrop = movie.backdrop_path
 
   return (
-    <section className="relative flex min-h-[92vh] items-center overflow-hidden">
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.6 }}
+      className="absolute inset-0"
+    >
       {backdrop && (
         <motion.div
-          initial={{ opacity: 0, scale: 1.1 }}
-          animate={{ opacity: 0.35, scale: 1 }}
+          initial={{ opacity: 0, scale: 1.08 }}
+          animate={{ opacity: 0.5, scale: 1 }}
           transition={{ duration: 1.2 }}
           className="absolute inset-0"
         >
@@ -29,7 +38,7 @@ export default function Hero({ featured, onView }) {
       <div className="pointer-events-none absolute -left-40 top-20 h-96 w-96 rounded-full bg-cyan-600/25 blur-[120px]" />
       <div className="pointer-events-none absolute -right-32 bottom-0 h-96 w-96 rounded-full bg-sky-600/20 blur-[120px]" />
 
-      <div className="relative mx-auto w-full max-w-7xl px-4 pb-16 pt-28 sm:px-6">
+      <div className="relative mx-auto flex h-full w-full max-w-7xl flex-col items-start justify-center px-4 pb-16 pt-28 sm:px-6">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
@@ -47,7 +56,7 @@ export default function Hero({ featured, onView }) {
           transition={{ duration: 0.7, delay: 0.35 }}
           className="max-w-3xl text-5xl font-bold leading-[1.05] tracking-tight text-white sm:text-6xl lg:text-7xl"
         >
-          {featured.title}
+          {movie.title}
         </motion.h1>
 
         <motion.div
@@ -58,17 +67,17 @@ export default function Hero({ featured, onView }) {
         >
           <span className="flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 text-sm font-semibold text-white backdrop-blur">
             <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-            {Number(featured.vote_average) > 0 ? featured.vote_average.toFixed(1) : 'Unrated'}
+            {Number(movie.vote_average) > 0 ? movie.vote_average.toFixed(1) : 'Unrated'}
           </span>
-          {featured.release_date && (
+          {movie.release_date && (
             <span className="text-sm text-neutral-400">
-              {new Date(featured.release_date).getFullYear()}
+              {new Date(movie.release_date).getFullYear()}
             </span>
           )}
-          {featured.overview && (
+          {movie.overview && (
             <p className="mt-2 w-full max-w-xl text-base leading-relaxed text-neutral-300 sm:text-lg">
-              {featured.overview.slice(0, 220)}
-              {featured.overview.length > 220 ? '…' : ''}
+              {movie.overview.slice(0, 220)}
+              {movie.overview.length > 220 ? '…' : ''}
             </p>
           )}
         </motion.div>
@@ -79,7 +88,7 @@ export default function Hero({ featured, onView }) {
           transition={{ duration: 0.7, delay: 0.65 }}
           className="mt-8 flex flex-wrap gap-3"
         >
-          <Button variant="primary" size="lg" onClick={() => onView(featured)}>
+          <Button variant="primary" size="lg" onClick={() => onView(movie)}>
             View details
           </Button>
           <Button
@@ -91,6 +100,86 @@ export default function Hero({ featured, onView }) {
           </Button>
         </motion.div>
       </div>
+    </motion.div>
+  )
+}
+
+export default function Hero({ movies, onView }) {
+  const [active, setActive] = useState(0)
+  const [paused, setPaused] = useState(false)
+  const timer = useRef(null)
+
+  const count = movies?.length || 0
+  const go = useCallback(
+    (dir) => {
+      if (count === 0) return
+      setActive((i) => (i + dir + count) % count)
+    },
+    [count],
+  )
+
+  const clearTimer = () => {
+    if (timer.current) {
+      clearInterval(timer.current)
+      timer.current = null
+    }
+  }
+
+  useEffect(() => {
+    if (paused || count < 2) return
+    clearTimer()
+    timer.current = setInterval(() => setActive((i) => (i + 1) % count), INTERVAL)
+    return clearTimer
+  }, [paused, count, active])
+
+  if (count === 0) return null
+
+  const current = movies[active]
+
+  return (
+    <section
+      className="relative flex min-h-[92vh] items-center overflow-hidden"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocus={() => setPaused(true)}
+      onBlur={() => setPaused(false)}
+    >
+      <AnimatePresence>{current && <Slide key={current.id} movie={current} onView={onView} />}</AnimatePresence>
+
+      {count > 1 && (
+        <>
+          <button
+            type="button"
+            aria-label="Previous movie"
+            onClick={() => go(-1)}
+            className="group absolute left-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-neutral-950/40 text-neutral-300 backdrop-blur transition-colors hover:bg-neutral-950/70 hover:text-white sm:left-6"
+          >
+            <ChevronLeft className="h-5 w-5 transition-transform group-hover:-translate-x-0.5" />
+          </button>
+          <button
+            type="button"
+            aria-label="Next movie"
+            onClick={() => go(1)}
+            className="group absolute right-3 top-1/2 z-10 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full border border-white/10 bg-neutral-950/40 text-neutral-300 backdrop-blur transition-colors hover:bg-neutral-950/70 hover:text-white sm:right-6"
+          >
+            <ChevronRight className="h-5 w-5 transition-transform group-hover:translate-x-0.5" />
+          </button>
+
+          <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2">
+            {movies.map((m, i) => (
+              <button
+                key={m.id}
+                type="button"
+                aria-label={`Show ${m.title}`}
+                onClick={() => setActive(i)}
+                className={`h-1.5 rounded-full transition-all duration-300 ${
+                  i === active ? 'w-6 bg-cyan-400' : 'w-1.5 bg-white/30 hover:bg-white/60'
+                }`}
+              />
+            ))}
+          </div>
+        </>
+      )}
     </section>
   )
 }

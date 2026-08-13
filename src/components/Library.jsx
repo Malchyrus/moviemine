@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import {
   ArrowDownWideNarrow,
@@ -19,6 +19,8 @@ import {
 import { useLibrary } from '../lib/library'
 import { useAuth } from '../lib/auth'
 import { useGenres } from '../lib/genres'
+import { resizeCover } from '../lib/image'
+import GenreFilter, { cycleGenre, matchesGenreFilters, normalizeCounts } from './GenreFilter'
 import MovieCard from './MovieCard'
 import SkeletonCard, { EmptyState } from './SkeletonCard'
 import Button from './ui/Button'
@@ -30,30 +32,6 @@ const SORTS = [
 ]
 
 const getMovie = (item) => item.movie || item
-
-function resizeCover(file, maxSide = 1920) {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => {
-      const img = new Image()
-      img.onload = () => {
-        const scale = Math.min(1, maxSide / Math.max(img.width, img.height))
-        const w = Math.round(img.width * scale)
-        const h = Math.round(img.height * scale)
-        const canvas = document.createElement('canvas')
-        canvas.width = w
-        canvas.height = h
-        const ctx = canvas.getContext('2d')
-        ctx.drawImage(img, 0, 0, w, h)
-        resolve(canvas.toDataURL('image/jpeg', 0.85))
-      }
-      img.onerror = reject
-      img.src = reader.result
-    }
-    reader.onerror = reject
-    reader.readAsDataURL(file)
-  })
-}
 
 function BackgroundPanel() {
   const { preferences, updatePreferences } = useLibrary()
@@ -655,68 +633,21 @@ function ListsPanel({ view, onSelect }) {
   )
 }
 
-function GenreColumn({ genreCounts, genreIds, onToggle, onClear }) {
-  const genres = useGenres()
-  const entries = Object.entries(genreCounts).sort((a, b) => b[1] - a[1])
-
-  if (entries.length === 0) return null
-
-  return (
-    <section className="rounded-2xl border border-white/10 bg-white/5 p-4">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-white">Genres</h3>
-        {genreIds.size > 0 && (
-          <button
-            type="button"
-            onClick={onClear}
-            className="text-xs font-medium text-cyan-300 transition-colors hover:text-cyan-200"
-          >
-            Clear
-          </button>
-        )}
-      </div>
-      <div className="mt-3 space-y-1">
-        {entries.map(([id, count]) => {
-          const checked = genreIds.has(Number(id))
-          const name = genres[Number(id)] || `Genre ${id}`
-          return (
-            <button
-              key={id}
-              type="button"
-              onClick={() => onToggle(Number(id))}
-              className="flex w-full items-center gap-2.5 rounded-lg px-2 py-1.5 text-left transition-colors hover:bg-white/5"
-            >
-              <span
-                className={`flex h-4 w-4 shrink-0 items-center justify-center rounded border transition-colors ${
-                  checked ? 'border-cyan-400 bg-cyan-500' : 'border-white/20 bg-white/5'
-                }`}
-              >
-                {checked && <Check className="h-3 w-3 text-white" />}
-              </span>
-              <span
-                className={`flex-1 truncate text-xs ${
-                  checked ? 'text-white' : 'text-neutral-400'
-                }`}
-              >
-                {name}
-              </span>
-              <span className="shrink-0 text-[10px] text-neutral-600">{count}</span>
-            </button>
-          )
-        })}
-      </div>
-    </section>
-  )
-}
-
 export default function Library({ onView, onOpenAuth }) {
   const { user } = useAuth()
-  const { entries, lists, loading, error, counts } = useLibrary()
+  const { entries, lists, loading, error, counts, refreshLibrary } = useLibrary()
   const genres = useGenres()
   const [view, setView] = useState('all')
-  const [genreIds, setGenreIds] = useState(() => new Set())
+  const [included, setIncluded] = useState(() => new Set())
+  const [excluded, setExcluded] = useState(() => new Set())
   const [sort, setSort] = useState('recent')
   const [query, setQuery] = useState('')
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 24
+
+  useEffect(() => {
+    refreshLibrary().catch(() => {})
+  }, [refreshLibrary])
 
   const activeList = view === 'all' ? null : lists.find((l) => l.id === view) || null
 
@@ -747,10 +678,8 @@ export default function Library({ onView, onOpenAuth }) {
 
   const filtered = useMemo(() => {
     let list = [...movies]
-    if (genreIds.size > 0) {
-      list = list.filter((item) =>
-        (getMovie(item).genres || []).some((g) => genreIds.has(g.id)),
-      )
+    if (included.size > 0 || excluded.size > 0) {
+      list = list.filter((item) => matchesGenreFilters(getMovie(item), included, excluded))
     }
     const q = query.trim().toLowerCase()
     if (q) list = list.filter((item) => getMovie(item).title.toLowerCase().includes(q))
@@ -774,19 +703,29 @@ export default function Library({ onView, onOpenAuth }) {
         )
     }
     return list
-  }, [movies, genreIds, query, sort, entryOf])
+  }, [movies, included, excluded, query, sort, entryOf])
 
   const viewTitle = activeList ? activeList.name : 'All movies'
   const viewCount = activeList ? activeList.movies_count ?? activeList.movies?.length ?? 0 : counts.total
 
-  const toggleGenre = (id) => {
-    setGenreIds((prev) => {
-      const next = new Set(prev)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+  const cycleHandler = (id) => {
+    const next = cycleGenre(included, excluded, id)
+    setIncluded(next.included)
+    setExcluded(next.excluded)
   }
+
+  const clearGenres = () => {
+    setIncluded(new Set())
+    setExcluded(new Set())
+  }
+
+  useEffect(() => {
+    setPage(1)
+  }, [query, sort, view, included, excluded])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const safePage = Math.min(page, totalPages)
+  const paged = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE)
 
   const searching = query.trim().length > 0
   const emptyMessage = activeList
@@ -844,11 +783,11 @@ export default function Library({ onView, onOpenAuth }) {
             )}
           </div>
           <div className="mt-4">
-            <GenreColumn
-              genreCounts={genreCounts}
-              genreIds={genreIds}
-              onToggle={toggleGenre}
-              onClear={() => setGenreIds(new Set())}
+            <GenreFilter
+              counts={genreCounts}
+              included={included}
+              excluded={excluded}
+              onCycle={cycleHandler}
             />
           </div>
         </aside>
@@ -860,10 +799,10 @@ export default function Library({ onView, onOpenAuth }) {
               <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-medium text-neutral-300">
                 {viewCount}
               </span>
-              {genreIds.size > 0 && (
+              {(included.size > 0 || excluded.size > 0) && (
                 <button
                   type="button"
-                  onClick={() => setGenreIds(new Set())}
+                  onClick={clearGenres}
                   className="text-xs font-medium text-cyan-300 transition-colors hover:text-cyan-200"
                 >
                   Clear genres
@@ -893,20 +832,24 @@ export default function Library({ onView, onOpenAuth }) {
             </div>
 
             <div className="flex gap-2 overflow-x-auto pb-1 lg:hidden">
-              {Object.entries(genreCounts).map(([id, count]) => {
-                const checked = genreIds.has(Number(id))
+              {normalizeCounts(genreCounts).map(([id, count]) => {
+                const key = Number(id)
+                const isIn = included.has(key)
+                const isEx = excluded.has(key)
                 return (
                   <button
                     key={id}
                     type="button"
-                    onClick={() => toggleGenre(Number(id))}
+                    onClick={() => cycleHandler(key)}
                     className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
-                      checked
+                      isIn
                         ? 'bg-cyan-500 text-white'
-                        : 'border border-white/10 bg-white/5 text-neutral-400'
+                        : isEx
+                          ? 'border border-red-500 bg-red-500/20 text-red-400'
+                          : 'border border-white/10 bg-white/5 text-neutral-400'
                     }`}
                   >
-                    {genres[Number(id)] || `Genre ${id}`}
+                    {genres[key] || `Genre ${id}`}
                     <span className="ml-1 opacity-60">{count}</span>
                   </button>
                 )
@@ -946,19 +889,52 @@ export default function Library({ onView, onOpenAuth }) {
                 />
               </motion.div>
             ) : filtered.length > 0 ? (
-              <motion.div
-                key={`${view}-${sort}-${query}-${genreIds.size}`}
-                layout
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={{ duration: 0.25 }}
-                className="grid grid-cols-2 gap-4 pb-8 sm:grid-cols-3 xl:grid-cols-5"
-              >
-                {filtered.map((item, i) => (
-                  <MovieCard key={getMovie(item).id} movie={getMovie(item)} index={i} onView={onView} />
-                ))}
-              </motion.div>
+              <>
+                <motion.div
+                  key={`${view}-${sort}-${query}-${included.size}-${excluded.size}`}
+                  layout
+                  initial={{ opacity: 0, y: 12 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -8 }}
+                  transition={{ duration: 0.25 }}
+                  className="grid grid-cols-2 gap-4 pb-8 sm:grid-cols-3 xl:grid-cols-5"
+                >
+                  {paged.map((item, i) => (
+                    <MovieCard key={getMovie(item).id} movie={getMovie(item)} index={i} onView={onView} />
+                  ))}
+                </motion.div>
+                {filtered.length > PAGE_SIZE && (
+                  <div className="flex flex-col items-center gap-3 pb-8">
+                    <p className="text-xs text-neutral-500">
+                      Showing {Math.min(filtered.length, safePage * PAGE_SIZE)} of {filtered.length}
+                    </p>
+                    <div className="flex items-center gap-3">
+                      <Button
+                        variant="outline"
+                        disabled={safePage === 1}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      >
+                        Prev
+                      </Button>
+                      {safePage < totalPages && (
+                        <Button
+                          variant="accent"
+                          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        >
+                          Load more
+                        </Button>
+                      )}
+                      <Button
+                        variant="outline"
+                        disabled={safePage === totalPages}
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      >
+                        Next
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
             ) : (
               <motion.div key={`${view}-empty`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
                 <EmptyState

@@ -1,25 +1,31 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { fetchTrending, fetchPopular, fetchUpcoming, fetchTopRated, searchMovies } from '../lib/api'
-import { useGenres } from '../lib/genres'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { fetchTrending, fetchPopular, fetchUpcoming, fetchTopRated, fetchRecommendations } from '../lib/api'
+import { useAuth } from '../lib/auth'
 import Hero from '../components/Hero'
 import MovieRow from '../components/MovieRow'
-import MovieGrid from '../components/MovieGrid'
 import SearchBar from '../components/SearchBar'
-import { EmptyState } from '../components/SkeletonCard'
+
+function shuffle(arr) {
+  const a = [...arr]
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1))
+    ;[a[i], a[j]] = [a[j], a[i]]
+  }
+  return a
+}
 
 export default function Home({ onView }) {
-  const genres = useGenres()
+  const navigate = useNavigate()
+  const { user } = useAuth()
   const [trending, setTrending] = useState([])
   const [popular, setPopular] = useState([])
   const [upcoming, setUpcoming] = useState([])
   const [topRated, setTopRated] = useState([])
+  const [recommended, setRecommended] = useState([])
+  const [recsLoading, setRecsLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [query, setQuery] = useState('')
-  const [results, setResults] = useState([])
-  const [searching, setSearching] = useState(false)
-  const [genreFilter, setGenreFilter] = useState(null)
-  const searchRef = useRef(null)
   const retryTimer = useRef(null)
 
   const load = useCallback(async (attempt = 1) => {
@@ -32,7 +38,7 @@ export default function Home({ onView }) {
         fetchUpcoming(),
         fetchTopRated(),
       ])
-      setTrending(t.results || [])
+      setTrending(shuffle(t.results || []))
       setPopular(p.results || [])
       setUpcoming(u.results || [])
       setTopRated(tr.results || [])
@@ -55,137 +61,70 @@ export default function Home({ onView }) {
   }, [load])
 
   useEffect(() => {
-    if (!query.trim()) {
-      setResults([])
-      setSearching(false)
+    if (!user) {
+      setRecommended([])
       return
     }
-    const t = setTimeout(async () => {
-      setSearching(true)
-      try {
-        const data = await searchMovies(query.trim())
-        setResults(data.results || [])
-      } catch {
-        setResults([])
-      } finally {
-        setSearching(false)
-      }
-    }, 350)
-    return () => clearTimeout(t)
-  }, [query])
+    let active = true
+    setRecsLoading(true)
+    fetchRecommendations()
+      .then((data) => {
+        if (active) setRecommended(data.results || [])
+      })
+      .catch(() => {
+        if (active) setRecommended([])
+      })
+      .finally(() => {
+        if (active) setRecsLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [user])
 
-  const featured = useMemo(() => trending[0] || null, [trending])
-  const showSearch = query.trim().length > 0
-
-  const filteredResults = useMemo(() => {
-    if (!genreFilter) return results
-    return results.filter((m) => m.genre_ids?.includes(genreFilter))
-  }, [results, genreFilter])
-
-  const genresInResults = useMemo(() => {
-    const ids = new Set()
-    results.forEach((m) => (m.genre_ids || []).forEach((id) => ids.add(id)))
-    return [...ids]
-      .map((id) => ({ id, name: genres[id] }))
-      .filter((g) => g.name)
-      .sort((a, b) => a.name.localeCompare(b.name))
-  }, [results, genres])
-
-  const onQueryChange = useCallback((value) => {
-    setQuery(value)
-    setGenreFilter(null)
-  }, [])
-
-  const chipClass = (active) =>
-    `rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors ${
-      active
-        ? 'border-cyan-500/50 bg-cyan-500/10 text-cyan-300'
-        : 'border-white/10 bg-white/5 text-neutral-300 hover:bg-white/10'
-    }`
+  const goSearch = useCallback(
+    (value) => {
+      const q = value.trim()
+      if (q) navigate(`/search?q=${encodeURIComponent(q)}`, { replace: true })
+    },
+    [navigate],
+  )
 
   return (
     <>
-      <Hero featured={featured} onView={onView} />
+      <Hero movies={trending} onView={onView} />
 
-      <main
-        id="search"
-        className="mx-auto w-full max-w-7xl scroll-mt-24 px-4 py-12 sm:px-6"
-      >
-        <SearchBar
-          query={query}
-          onChange={onQueryChange}
-          onSubmit={(e) => e.preventDefault()}
-          inputRef={searchRef}
-        />
+      <main className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6">
+        <SearchBar query="" onChange={goSearch} onSubmit={(e) => e.preventDefault()} />
 
-        {showSearch ? (
-          <>
-            {genresInResults.length > 0 && (
-              <div className="mt-6 flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setGenreFilter(null)}
-                  className={chipClass(genreFilter === null)}
-                >
-                  All
-                </button>
-                {genresInResults.map((g) => (
-                  <button
-                    key={g.id}
-                    type="button"
-                    onClick={() => setGenreFilter(genreFilter === g.id ? null : g.id)}
-                    className={chipClass(genreFilter === g.id)}
-                  >
-                    {g.name}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="mt-8">
-              {searching ? (
-                <MovieGrid loading />
-              ) : filteredResults.length > 0 ? (
-                <MovieGrid
-                  title={`Results for “${query.trim()}”`}
-                  movies={filteredResults}
-                  onView={onView}
-                />
-              ) : results.length > 0 ? (
-                <EmptyState
-                  title="No movies match this genre"
-                  message="Try a different genre or clear the filter."
-                />
-              ) : (
-                <EmptyState
-                  title={`No results for “${query.trim()}”`}
-                  message="Try a different title, like “Inception” or “Parasite”."
-                />
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="mt-12 space-y-12">
+        <div className="mt-12 space-y-12">
+          {user && (recsLoading || recommended.length > 0) && (
             <MovieRow
-              title="Popular right now"
-              movies={popular}
-              loading={loading}
+              title="Recommended for you"
+              movies={recommended}
+              loading={recsLoading}
               onView={onView}
             />
-            <MovieRow
-              title="Top rated"
-              movies={topRated}
-              loading={loading}
-              onView={onView}
-            />
-            <MovieRow
-              title="Coming soon"
-              movies={upcoming}
-              loading={loading}
-              onView={onView}
-            />
-          </div>
-        )}
+          )}
+          <MovieRow
+            title="Popular right now"
+            movies={popular}
+            loading={loading}
+            onView={onView}
+          />
+          <MovieRow
+            title="Top rated"
+            movies={topRated}
+            loading={loading}
+            onView={onView}
+          />
+          <MovieRow
+            title="Coming soon"
+            movies={upcoming}
+            loading={loading}
+            onView={onView}
+          />
+        </div>
       </main>
 
       {error && (

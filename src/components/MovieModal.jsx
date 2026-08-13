@@ -23,12 +23,13 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
   const [region, setRegion] = useState('')
   const [providersLoading, setProvidersLoading] = useState(true)
   const [providersError, setProvidersError] = useState(false)
-  const { has, toggle, entry, setWatched, setRating } = useLibrary()
+  const { has, toggle, entry, setWatched, setRating, preferences } = useLibrary()
   const { user } = useAuth()
   const genres = useGenres()
   const inList = has(movie.id)
   const watched = entry(movie.id)?.watched || false
   const myRating = entry(movie.id)?.rating || null
+  const bestMovie = details && details.genres ? details : movie
 
   function guarded(action) {
     return (...args) => {
@@ -48,6 +49,11 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
 
   function resolveRegion(list) {
     const codes = new Set((list || []).map((r) => r.iso_3166_1))
+    const preferred = preferences.default_region
+    if (preferred && codes.has(preferred)) {
+      setRegion(preferred)
+      return
+    }
     const parts = (navigator.language || 'en-US').split('-')
     const guess = (parts[1] || parts[0]).toUpperCase()
     setRegion(codes.has(guess) ? guess : 'US')
@@ -68,7 +74,7 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
     return () => {
       active = false
     }
-  }, [])
+  }, [preferences.default_region])
 
   useEffect(() => {
     if (!region) return
@@ -204,13 +210,13 @@ export default function MovieModal({ movie, onClose, onRequireAuth }) {
                       </p>
                       <RatingStars
                         value={myRating}
-                        onChange={guarded((r) => setRating(movie.id, r))}
+                        onChange={guarded((r) => setRating(bestMovie, r))}
                       />
                     </div>
 
                     <Button
                       variant={watched ? 'success' : 'outline'}
-                      onClick={guarded(() => setWatched(movie.id, !watched))}
+                      onClick={guarded(() => setWatched(bestMovie, !watched))}
                     >
                       {watched ? (
                         <>

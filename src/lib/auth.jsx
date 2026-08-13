@@ -62,6 +62,11 @@ export function AuthProvider({ children }) {
     localStorage.setItem(USER_KEY, JSON.stringify(nextUser))
   }, [])
 
+  const updateUser = useCallback((nextUser) => {
+    setUser(nextUser)
+    localStorage.setItem(USER_KEY, JSON.stringify(nextUser))
+  }, [])
+
   const login = useCallback(
     async (credentials) => {
       const data = await loginUser(credentials)
@@ -93,8 +98,8 @@ export function AuthProvider({ children }) {
   }, [])
 
   const value = useMemo(
-    () => ({ user, initializing, login, register, logout }),
-    [user, initializing, login, register, logout],
+    () => ({ user, initializing, login, register, logout, updateUser }),
+    [user, initializing, login, register, logout, updateUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
